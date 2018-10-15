@@ -2,16 +2,16 @@
 
 // --------------------------
 //
-// ヘテムル用 a-blog cms 2.8.x 簡単セットアップ
+// ヘテムル用 a-blog cms 2.9.x 簡単セットアップ
 //
 // --------------------------
 
 $ablogcmsVersion = ""; #サイトからバージョンを自動チェック
 
-# ERROR になる場合や 2.8系のバージョンを
+# ERROR になる場合や 2.9系のバージョンを
 # 指定したい場合には、バージョンを設定してください。
 
-#$ablogcmsVersion = "2.8.0";
+#$ablogcmsVersion = "2.9.0";
 
 // --------------------------
 
@@ -280,16 +280,16 @@ function dir_shori ($shori, $nowDir , $newDir="") {
 
 function download_version_check () {
 
-  // Version 2.8.x のチェック用
+  // Version 2.9.x のチェック用
   // 正常にチェックできない場合には 空 でかえす。
 
   $options['ssl']['verify_peer']=false;
   $options['ssl']['verify_peer_name']=false;
   $html=file_get_contents('https://developer.a-blogcms.jp/download/', false, stream_context_create($options));
-  preg_match('/<h1 class="entry-title" id="(.*)"><a href="https:\/\/developer.a-blogcms.jp\/download\/package\/2.8.(.*).html">(.*)<\/a><\/h1>/',$html,$matches);
+  preg_match('/<h1 class="entry-title" id="(.*)"><a href="https:\/\/developer.a-blogcms.jp\/download\/package\/2.9.(.*).html">(.*)<\/a><\/h1>/',$html,$matches);
 
   if (is_numeric($matches[2])) {
-    return "2.8.".$matches[2];
+    return "2.9.".$matches[2];
   } else {
     return;
   }
