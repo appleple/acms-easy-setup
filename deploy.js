@@ -51,19 +51,25 @@ const zipPromise = (src, dist) => {
   });
 }
 
+function *zipPromiseVersion (version) {
+  yield zipPromise(`${version}/cpi`, `./build/${version}/cpi.zip`);
+  yield zipPromise(`${version}/heteml`, `./build/${version}/heteml.zip`);
+  yield zipPromise(`${version}/lolipop`, `./build/${version}/lolipop.zip`);
+  yield zipPromise(`${version}/mamp`, `./build/${version}/mamp.zip`);
+  yield zipPromise(`${version}/sakura`, `./build/${version}/sakura.zip`);
+  yield zipPromise(`${version}/xampp`, `./build/${version}/xampp.zip`);
+  yield zipPromise(`${version}/xserver`, `./build/${version}/xserver.zip`);
+  yield zipPromise(`${version}/zenlogic`, `./build/${version}/zenlogic.zip`);
+  yield zipPromise(`${version}/update`, `./build/${version}/update.zip`);
+}
+
 co(function* () {
   try {
     fs.mkdirsSync(`build`);
     fs.mkdirsSync(`build/28x`);
-    yield zipPromise(`28x/cpi`, `./build/28x/cpi.zip`);
-    yield zipPromise(`28x/heteml`, `./build/28x/heteml.zip`);
-    yield zipPromise(`28x/lolipop`, `./build/28x/lolipop.zip`);
-    yield zipPromise(`28x/mamp`, `./build/28x/mamp.zip`);
-    yield zipPromise(`28x/sakura`, `./build/28x/sakura.zip`);
-    yield zipPromise(`28x/xampp`, `./build/28x/xampp.zip`);
-    yield zipPromise(`28x/xserver`, `./build/28x/xserver.zip`);
-    yield zipPromise(`28x/zenlogic`, `./build/28x/zenlogic.zip`);
-    yield zipPromise(`28x/update`, `./build/28x/update.zip`);
+    fs.mkdirsSync(`build/29x`);
+    yield zipPromiseVersion('28x');
+    yield zipPromiseVersion('29x');
     yield systemCmd('git add -A');
     yield systemCmd(`git commit -m "v${pkg.version}"`);
     yield systemCmd('git push');
