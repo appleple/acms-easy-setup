@@ -47,7 +47,6 @@ if (!$ablogcmsVersion) {
 // --------------------------
 
 # ダウンロード元 URL
-$download55 = sprintf("http://developer.a-blogcms.jp/_package/%s/acms%s_php5.3.zip",$ablogcmsVersion,$ablogcmsVersion);
 $download56 = sprintf("http://developer.a-blogcms.jp/_package/%s/acms%s_php5.6.zip",$ablogcmsVersion,$ablogcmsVersion);
 $download71 = sprintf("http://developer.a-blogcms.jp/_package/%s/acms%s_php7.1.zip",$ablogcmsVersion,$ablogcmsVersion);
 
@@ -56,16 +55,11 @@ $download71 = sprintf("http://developer.a-blogcms.jp/_package/%s/acms%s_php7.1.z
 $zipFile = "./acms_install.zip";
 
 # 解凍後の全体フォルダ名
-$zipAfterDirName55 = sprintf("acms%s_php5.3",$ablogcmsVersion);
 $zipAfterDirName56 = sprintf("acms%s_php5.6",$ablogcmsVersion);
 $zipAfterDirName71 = sprintf("acms%s_php7.1",$ablogcmsVersion);
 
 # 解凍後の a-blog cms のフォルダ名
 $cmsDirName = "ablogcms";
-
-# ioncube Loader ダウンロード元 URL
-$downloadIoncube32 = "http://downloads3.ioncube.com/loader_downloads/ioncube_loaders_win_vc11_x86.zip";
-$downloadIoncube64 = "http://downloads3.ioncube.com/loader_downloads/ioncube_loaders_win_vc11_x86-64.zip";
 
 # ioncube Loader ダウンロード後のZipファイル名
 $zipFileIoncube ="ioncube.zip";
@@ -90,25 +84,60 @@ if (is_file("./license.php")) {
 $versionArray = explode(".", phpversion());
 $version = $versionArray[0].".".$versionArray[1];
 
-if ($versionArray[0] == 7 && $versionArray[1] > 0) {
-   $download = $download71;
-   $zipAfterDirName = $zipAfterDirName71;
-} elseif ($versionArray[0] == 7 && $versionArray[1] == 0) {
-   $download = $download56;
-   $zipAfterDirName = $zipAfterDirName56;
-} elseif ($versionArray[1] >= 6) {
-    $download = $download56;
-    $zipAfterDirName = $zipAfterDirName56;
+if (PHP_INT_SIZE == 4) {
+	$bits = "x86";
 } else {
-    $download = $download55;
-    $zipAfterDirName = $zipAfterDirName55;
+	$bits = "x86-64";
 }
 
-if (PHP_INT_SIZE == 4) {
-	$downloadIoncube = $downloadIoncube32;
+if ($versionArray[0] == 7) {
+
+	switch ($versionArray[1]) {
+
+    case 0:
+    $download = $download56;
+    $zipAfterDirName = $zipAfterDirName56;
+    $vc = "vc14";
+    break;
+
+		case 1:
+			$download = $download71;
+			$zipAfterDirName = $zipAfterDirName71;
+			$vc = "vc14";
+			break;
+
+		case 2:
+			$download = $download71;
+			$zipAfterDirName = $zipAfterDirName71;
+			$vc = "vc15";
+      break;
+
+		default:
+			echo 'php version Error ! : '.$download;
+			exit;
+	}
+
+} elseif ($versionArray[0] == 5) {
+
+	switch ($versionArray[1]) {
+
+		case 6:
+			$download = $download56;
+			$zipAfterDirName = $zipAfterDirName56;
+			$vc = "vc11";
+			break;
+
+		default:
+			echo 'php version Error ! : '.$download;
+			exit;
+	}
 } else {
-	$downloadIoncube = $downloadIoncube64;
+    echo 'php version Error ! : '.$download;
+    exit;
 }
+
+# ioncube Loader ダウンロード元 URL
+$downloadIoncube = sprintf("http://downloads.ioncube.com/loader_downloads/ioncube_loaders_win_%s_%s.zip",$vc,$bits);
 
 $ablogcmsDir = $installPath."/".$zipAfterDirName."/".$cmsDirName."/";
 
@@ -127,7 +156,7 @@ if ($fp !== FALSE) {
     }
     fclose($fp);
 } else {
-    echo 'a-blog cms download Error ! : '.$download;
+    echo 'a-blog cms download Error ! : '.$phpversion();
     exit;
 }
 
