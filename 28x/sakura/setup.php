@@ -57,7 +57,10 @@ $zipAfterDirName71 = sprintf("acms%s_php7.1",$ablogcmsVersion);
 $cmsDirName = "ablogcms";
 
 # ioncube Loader ダウンロード元 URL
-$downloadIoncube = "http://downloads3.ioncube.com/loader_downloads/ioncube_loaders_fre_9_x86-64.zip";
+$downloadIoncube = "http://downloads3.ioncube.com/loader_downloads/ioncube_loaders_fre_11_x86-64.zip";
+if (preg_match('/FreeBSD 9.1/',php_uname("v"))){
+  $downloadIoncube = "http://downloads3.ioncube.com/loader_downloads/ioncube_loaders_fre_9_x86-64.zip";
+}
 
 # ioncube Loader ダウンロード後のZipファイル名
 $zipFileIoncube ="ioncube.zip";
