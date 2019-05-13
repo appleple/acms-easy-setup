@@ -93,25 +93,26 @@ if (PHP_INT_SIZE == 4) {
 if ($versionArray[0] == 7) {
 
 	switch ($versionArray[1]) {
-
-    case 0:
-    $download = $download56;
-    $zipAfterDirName = $zipAfterDirName56;
-    $vc = "vc14";
-    break;
-
+		case 0:
+			$download = $download56;
+			$zipAfterDirName = $zipAfterDirName56;
+			$vc = "vc14";
+			break;
 		case 1:
 			$download = $download71;
 			$zipAfterDirName = $zipAfterDirName71;
 			$vc = "vc14";
 			break;
-
 		case 2:
 			$download = $download71;
 			$zipAfterDirName = $zipAfterDirName71;
 			$vc = "vc15";
-      break;
-
+			break;
+		case 3:
+			$download = $download71;
+			$zipAfterDirName = $zipAfterDirName71;
+			$vc = "vc15";
+      			break;
 		default:
 			echo 'php version Error ! : '.$download;
 			exit;
