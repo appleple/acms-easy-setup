@@ -16,7 +16,7 @@ $ablogcmsVersion = ""; #サイトからバージョンを自動チェック
 // --------------------------
 
 # PHP のバージョンを "5.6" か "7.0" に指定
-$phpVersion = "7.0" ; 
+$phpVersion = "" ; 
 
 # インストーラー の
 # MySQL の設定を事前に行う場合に
@@ -77,26 +77,27 @@ if (is_file("./license.php")) {
 // バージョンのチェック
 // --------------------------
 
-$versionArray = explode(".", phpversion());
-$version = $versionArray[0].".".$versionArray[1];
-
-if ($versionArray[0] == 7) { 
-    $download = $download56;
-    $zipAfterDirName = $zipAfterDirName56;
-    $htaccessPlus = "AddHandler php7.0-script .php";
-} elseif ($versionArray[1] == 6) { 
-    $download = $download56;
-    $zipAfterDirName = $zipAfterDirName56;
-    $htaccessPlus = "AddHandler php5.6-script .php";
-} else { 
-    $download = $download55;
-    $zipAfterDirName = $zipAfterDirName55;
-    $htaccessPlus = "";
-}
-
 if (isset($phpVersion)) {
 
   switch ($phpVersion) {
+
+    case "7.3":
+      $download = $download71;
+      $zipAfterDirName = $zipAfterDirName71;
+      $htaccessPlus = "";
+      break;
+
+    case "7.2":
+      $download = $download71;
+      $zipAfterDirName = $zipAfterDirName71;
+      $htaccessPlus = "";
+      break;
+
+    case "7.1":
+      $download = $download71;
+      $zipAfterDirName = $zipAfterDirName71;
+      $htaccessPlus = "";
+      break;
 
     case "7.0":
       $download = $download56;
@@ -121,8 +122,33 @@ if (isset($phpVersion)) {
       $zipAfterDirName = $zipAfterDirName55;
       $htaccessPlus = "AddHandler php5.3-script .php";
       break;
-
   }
+
+} else {
+
+  $versionArray = explode(".", phpversion());
+  $version = $versionArray[0].".".$versionArray[1];
+
+  if ($versionArray[0] == 7) { 
+    if ($versionArray[1] == 0) { 
+      $download = $download56;
+      $zipAfterDirName = $zipAfterDirName56;
+      $htaccessPlus = "AddHandler php7.0-script .php";
+    } else {
+      $download = $download71;
+      $zipAfterDirName = $zipAfterDirName71;
+      $htaccessPlus = "";
+    }
+  } elseif ($versionArray[1] == 6) { 
+      $download = $download56;
+      $zipAfterDirName = $zipAfterDirName56;
+      $htaccessPlus = "AddHandler php5.6-script .php";
+  } else { 
+      $download = $download55;
+      $zipAfterDirName = $zipAfterDirName55;
+      $htaccessPlus = "";
+  }
+
 }
 
 $ablogcmsDir = $installPath."/".$zipAfterDirName."/".$cmsDirName."/";
