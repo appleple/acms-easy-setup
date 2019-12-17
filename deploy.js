@@ -69,9 +69,11 @@ co(function* () {
     fs.mkdirsSync(`build/28x`);
     fs.mkdirsSync(`build/29x`);
     fs.mkdirsSync(`build/210x`);
+    fs.mkdirsSync(`build/211x`);
     yield zipPromiseVersion('28x');
     yield zipPromiseVersion('29x');
     yield zipPromiseVersion('210x');
+    yield zipPromiseVersion('211x');
     yield systemCmd('git add -A');
     yield systemCmd(`git commit -m "v${pkg.version}"`);
     yield systemCmd('git push');
