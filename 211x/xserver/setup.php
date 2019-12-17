@@ -70,11 +70,15 @@ $phpName = basename($_SERVER['PHP_SELF']);
 // --------------------------
 // 動作チェック
 // --------------------------
-
 if (is_file("./license.php")) {
-  echo "Installation error. Please use the updated version.";
-  exit;
+    echo "Installation error. Please use the updated version.";
+    exit;
 }
+if ($_SERVER['HTTP_X_PHP_FPM_VERSION']) {
+    echo "Please change from X Accelerator Ver.2 to X Accelerator Ver.1.";
+    exit;
+}
+
 
 // --------------------------
 // バージョンのチェック

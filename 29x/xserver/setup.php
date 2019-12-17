@@ -70,10 +70,13 @@ $phpName = basename($_SERVER['PHP_SELF']);
 // --------------------------
 // 動作チェック
 // --------------------------
-
 if (is_file("./license.php")) {
   echo "Installation error. Please use the updated version.";
   exit;
+}
+if ($_SERVER['HTTP_X_PHP_FPM_VERSION']) {
+    echo "Please change from X Accelerator Ver.2 to X Accelerator Ver.1.";
+    exit;
 }
 
 // --------------------------
@@ -124,7 +127,7 @@ if ($fp !== FALSE) {
 
 $zip = new ZipArchive();
 $res = $zip->open($zipFile);
- 
+
 if($res === true){
     $zip->extractTo($installPath);
     $zip->close();
@@ -175,7 +178,7 @@ if ($fp !== FALSE) {
 
 $zip = new ZipArchive();
 $res = $zip->open($zipFileIoncube);
- 
+
 if($res === true){
     $zip->extractTo($installPath);
     $zip->close();
@@ -191,10 +194,10 @@ if($res === true){
 
 $iniFile = php_ini_loaded_file();
 
-if (preg_match("/xserver_php/i", $iniFile)) { 
+if (preg_match("/xserver_php/i", $iniFile)) {
   # 既存の php.ini に ioncube の設定があるかをチェック
   $file = file_get_contents($iniFile);
-  if (preg_match("/ioncube_loader/i", $file)) { 
+  if (preg_match("/ioncube_loader/i", $file)) {
     #設定済み
   } else {
 
@@ -210,7 +213,7 @@ if (preg_match("/xserver_php/i", $iniFile)) {
   if (preg_match("/public_html/i", $iniFile)) {
     # 既に php.ini が存在しているのでバックアップ。
     rename("./php.ini", './php.ini_backup_'.date("YmdHis"));
-  } 
+  }
   # php.ini を新規作成
 
   $iniFileName = "php.ini";
@@ -302,7 +305,7 @@ echo sprintf('<p style="text-align:center; margin-top:100px"><a href="%s">%s</a>
 function dir_shori ($shori, $nowDir , $newDir="") {
   if ($shori != "delete") {
     if (!is_dir($newDir)) {
-      mkdir($newDir); 
+      mkdir($newDir);
     }
   }
   if (is_dir($nowDir)) {
@@ -313,16 +316,16 @@ function dir_shori ($shori, $nowDir , $newDir="") {
             if (is_dir($nowDir."/".$file)) {
               dir_shori("copy", $nowDir."/".$file, $newDir."/".$file);
             } else {
-              copy($nowDir."/".$file, $newDir."/".$file); 
+              copy($nowDir."/".$file, $newDir."/".$file);
             }
           } elseif ($shori == "move") {
             rename($nowDir."/".$file, $newDir."/".$file);
           } elseif ($shori == "delete") {
             if (filetype($nowDir."/".$file) == "dir") {
-              dir_shori("delete", $nowDir."/".$file, ""); 
+              dir_shori("delete", $nowDir."/".$file, "");
             } else {
-              unlink($nowDir."/".$file); 
-            } 
+              unlink($nowDir."/".$file);
+            }
           }
         }
       }
