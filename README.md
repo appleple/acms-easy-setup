@@ -3,7 +3,10 @@
 ## 簡単アップデート
 より簡単に、ご利用の環境に合わせて a-blog cms をアップデートできるパッケージです。
 
-- [簡単アップデート](https://github.com/appleple/acms-easy-setup/raw/master/build/28x/update.zip)
+- [簡単アップデート 2.8x](https://github.com/appleple/acms-easy-setup/raw/master/build/28x/update.zip)
+- [簡単アップデート 2.9x](https://github.com/appleple/acms-easy-setup/raw/master/build/29x/update.zip)
+- [簡単アップデート 2.10x](https://github.com/appleple/acms-easy-setup/raw/master/build/210x/update.zip)
+- [簡単アップデート 2.11x](https://github.com/appleple/acms-easy-setup/raw/master/build/211x/update.zip)
 
 ## 簡単セットアップ
 より簡単に、ご利用の環境に合わせて a-blog cms をインストールできるパッケージです。
