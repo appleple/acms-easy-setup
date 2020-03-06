@@ -2,7 +2,7 @@
 
 // --------------------------
 //
-// CPI ACE01用 a-blog cms 2.11.x 簡単セットアップ
+// CPI ACE01 / SV-Basic用 a-blog cms 2.11.x 簡単セットアップ
 //
 // --------------------------
 
@@ -17,6 +17,11 @@ $ablogcmsVersion = ""; #サイトからバージョンを自動チェック
 
 # PHP のバージョンを指定してください。
 
+# ACE01 2011 PHP 5.3 / 5.4 / 5.5 / 5.6 / 7.0 / 7.1 
+# ACE01 2015 PHP 5.5 / 5.6 / 7.0 / 7.1
+# ACE01 2018 PHP 5.6 / 7.0 / 7.1
+# SV-Baisc.  PHP 7.1 / 7.2 / 7.3
+
 $php_version = "7.1"; // or "5.5" or "5.6" or "7.0"
 
 # インストーラー の
@@ -26,13 +31,17 @@ $php_version = "7.1"; // or "5.5" or "5.6" or "7.0"
 # ACE01 2011 MySQL 5.5
 # ACE01 2015 MySQL 5.5 / 5.6
 # ACE01 2018 MySQL 5.6
+# SV-Baisc MySQL 5.7
 
-$mysql_version = "5.6"; // or "5.5"
+$mysql_version = "5.6"; // or "5.5" or "5.7"
 
 # ACE01 のサーバー種類を取得できない場合に設定ください
 
 $server = ""; // "2011" or "2015" or "2018"
 
+# SV-Basic のサーバー種類を取得できない場合に設定ください
+
+# $server = "SV";
 
 // --------------------------
 
@@ -105,6 +114,39 @@ if (!$server) {
 }
 
   switch ($server) {
+
+    case "SV":
+    case "v1":
+    case "w1":
+      switch ($php_version) {
+
+        case "7.1":
+            $download = $download71;
+            $zipAfterDirName = $zipAfterDirName71;
+            $phpVersion = "71";
+            $ioncubePhpVersion = "7.1";
+            $mysql_version = "5.7";
+            break;
+        case "7.2":
+            $download = $download71;
+            $zipAfterDirName = $zipAfterDirName71;
+            $phpVersion = "72";
+            $ioncubePhpVersion = "7.2";
+            $mysql_version = "5.7";
+            break;
+        case "7.3":
+            $download = $download71;
+            $zipAfterDirName = $zipAfterDirName71;
+            $phpVersion = "73";
+            $ioncubePhpVersion = "7.3";
+            $mysql_version = "5.7";
+            break;
+
+        default:
+            echo "php version error : ".$php_version;
+            exit;
+      }
+      break;            
 
     case "2018":
     case "ah":
@@ -371,9 +413,11 @@ file_put_contents($db_default, $data);
 // ファイルの削除
 // --------------------------
 
+/*
 unlink($zipFile);
 unlink($zipFileIoncube);
 unlink($phpName);
+*/
 
 # index.html があった時にリネームしておく
 if (is_file("./index.html")) {
@@ -384,7 +428,7 @@ if (is_file("./index.html")) {
 unlink($installPath."/ioncube/loader-wizard.php");
 
 # プログラム以外のディレクトリを削除
-dir_shori ("delete", $zipAfterDirName);
+# dir_shori ("delete", $zipAfterDirName);
 
 // --------------------------
 // インストーラーに飛ぶ

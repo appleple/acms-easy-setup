@@ -1,3 +1,10 @@
+<!DOCTYPE HTML>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>a-blog cms インストーラー (ロリポップ版)</title>
+</head>
+<body style="text-align:center; margin-top:100px">
 <?php
 
 // --------------------------
@@ -33,10 +40,11 @@ if (!$ablogcmsVersion) {
   if ($check) {
     $ablogcmsVersion = $check;
   } else {
-    echo "web site version check error.";
+    echo '<p>最新版の a-blog cms のバージョンを取得できませんでした。</p>';
     exit;
   }
 }
+
 
 // --------------------------
 
@@ -76,8 +84,15 @@ if (is_file("./license.php")) {
 $versionArray = explode(".", phpversion());
 $version = $versionArray[0].".".$versionArray[1];
 
-
-if ($versionArray[0] == 5 && $versionArray[1] == 6) {
+if ($versionArray[0] == 7) {
+  if ($versionArray[1] == 0) {
+    $download = $download56;
+    $zipAfterDirName = $zipAfterDirName56;
+  } else {
+    $download = $download71;
+    $zipAfterDirName = $zipAfterDirName71;
+  }
+} elseif ($versionArray[0] == 5 && $versionArray[1] == 6) {
     $download = $download56;
     $zipAfterDirName = $zipAfterDirName56;
 } else {
@@ -257,3 +272,7 @@ function download_version_check () {
   }
 
 }
+
+?>
+</body>
+</html>
