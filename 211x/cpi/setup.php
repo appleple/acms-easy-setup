@@ -413,11 +413,9 @@ file_put_contents($db_default, $data);
 // ファイルの削除
 // --------------------------
 
-/*
 unlink($zipFile);
 unlink($zipFileIoncube);
 unlink($phpName);
-*/
 
 # index.html があった時にリネームしておく
 if (is_file("./index.html")) {
@@ -428,7 +426,7 @@ if (is_file("./index.html")) {
 unlink($installPath."/ioncube/loader-wizard.php");
 
 # プログラム以外のディレクトリを削除
-# dir_shori ("delete", $zipAfterDirName);
+dir_shori ("delete", $zipAfterDirName);
 
 // --------------------------
 // インストーラーに飛ぶ
