@@ -22,7 +22,7 @@ $ablogcmsVersion = ""; #サイトからバージョンを自動チェック
 # ACE01 2018 PHP 5.6 / 7.0 / 7.1
 # SV-Baisc.  PHP 7.1 / 7.2 / 7.3
 
-$php_version = "7.1"; // or "5.5" or "5.6" or "7.0"
+$php_version = "7.3"; // or "5.5" or "5.6" or "7.0"
 
 # インストーラー の
 # MySQL の設定を事前に行う場合に
