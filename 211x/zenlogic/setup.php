@@ -77,9 +77,12 @@ if (is_file("./license.php")) {
 $versionArray = explode(".", phpversion());
 $version = $versionArray[0].".".$versionArray[1];
 
-if ($versionArray[0] == 7) {
-  echo "PHP 7.x is not supported.";
-  exit;
+if ($versionArray[0]==7 && $versionArray[1] > 0 && $versionArray[1] < 4) {
+    $download = $download71;
+    $zipAfterDirName = $zipAfterDirName71;
+} elseif ($versionArray[0] == 7 && $versionArray[1] == 0) {
+    $download = $download56;
+    $zipAfterDirName = $zipAfterDirName56;
 } elseif ($versionArray[1] >= 6) {
     $download = $download56;
     $zipAfterDirName = $zipAfterDirName56;
