@@ -112,6 +112,10 @@ if ($versionArray[0] == 7) {
 			$download = $download71;
 			$zipAfterDirName = $zipAfterDirName71;
 			$vc = "vc15";
+    case 4:
+      $download = $download71;
+      $zipAfterDirName = $zipAfterDirName71;
+      $vc = "vc15";
       			break;
 		default:
 			echo 'php version Error ! : '.$download;
