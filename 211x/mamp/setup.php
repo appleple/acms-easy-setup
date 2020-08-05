@@ -89,7 +89,7 @@ if ($versionArray[0]==7 && $versionArray[1] > 0) {
 $cmsDirName = "ablogcms";
 
 # ioncube Loader ダウンロード元 URL
-$downloadIoncube = "http://downloads3.ioncube.com/loader_downloads/ioncube_loaders_dar_x86-64.zip";
+$downloadIoncube = "http://downloads.ioncube.com/loader_downloads/ioncube_loaders_mac_x86-64.zip";
 
 # ioncube Loader ダウンロード後のZipファイル名
 $zipFileIoncube ="ioncube.zip";
@@ -169,7 +169,7 @@ if ($handle = opendir($ablogcmsDir)) {
 // ioncube Loader チェック
 // --------------------------
 
-$useIonCubeLoader = sprintf("ioncube_loader_dar_%d.%d.so",$versionArray[0],$versionArray[1]);
+$useIonCubeLoader = sprintf("ioncube_loader_mac_%d.%d.so",$versionArray[0],$versionArray[1]);
 
 if (!is_file(PHP_EXTENSION_DIR."/".$useIonCubeLoader)) {
 
@@ -223,7 +223,7 @@ if (!is_file(PHP_EXTENSION_DIR."/".$useIonCubeLoader)) {
     $iniFile = "/Applications/MAMP/bin/php/php".phpversion()."/conf/php.ini";
 
     # 追記する設定内容
-    $iniData = sprintf("\n\ndate.timezone = 'Asia/Tokyo'\n\nzend_extension = \"%s/ioncube_loader_dar_%d.%d.so\"",PHP_EXTENSION_DIR ,$versionArray[0],$versionArray[1]);
+    $iniData = sprintf("\n\ndate.timezone = 'Asia/Tokyo'\n\nzend_extension = \"%s/ioncube_loader_mac_%d.%d.so\"",PHP_EXTENSION_DIR ,$versionArray[0],$versionArray[1]);
 
     $file = file_get_contents($iniFile);
 
