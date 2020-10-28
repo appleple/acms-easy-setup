@@ -253,6 +253,21 @@ rename($installPath."/private/htaccess.txt", $installPath.'/private/.htaccess');
 rename($installPath."/themes/htaccess.txt", $installPath.'/themes/.htaccess');
 
 // --------------------------
+// DB 初期設定
+// --------------------------
+
+$data = sprintf("<?php
+\$dbDefaultHost     = '%s';
+\$dbDefaultName     = '%s';
+\$dbDefaultCreate   = ''; // '' or 'checked'
+\$dbDefaultUser     = '%s';
+\$dbDefaultPass     = '%s';
+\$dbDefaultPrefix   = 'acms_';",$dbHost,$dbName,$dbUser,$dbPass);
+
+$db_default = $installPath."/setup/lib/db_default.php";
+file_put_contents($db_default, $data);
+
+// --------------------------
 // ファイルの削除
 // --------------------------
 
