@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>a-blog cms インストーラー (Windows XAMPP版)</title>
+<title>a-blog cms インストーラー (Windows XAMPP・MAMP両対応版)</title>
 </head>
 <body>
 <?php
@@ -11,7 +11,7 @@ set_time_limit(0);
 
 // --------------------------
 //
-// Windows XAMPP用 a-blog cms 2.11.x 簡単セットアップ
+// Windows XAMPP・MAMP両対応 a-blog cms 2.11.x 簡単セットアップ
 //
 // --------------------------
 
@@ -22,13 +22,6 @@ $ablogcmsVersion = ""; #サイトからバージョンを自動チェック
 
 #$ablogcmsVersion = "2.11.0";
 
-// --------------------------
-
-$dbHost     = 'localhost';
-$dbName     = 'DBacms';
-$dbCreate   = 'checked';
-$dbUser     = 'root';
-$dbPass     = '';
 
 // --------------------------
 // 現在の a-blog cms のバージョンをチェック
@@ -69,6 +62,15 @@ $installPath = realpath('.');
 $phpName = basename($_SERVER['PHP_SELF']);
 
 // --------------------------
+
+$dbHost     = 'localhost';
+$dbName     = 'DBacms_'.str_replace(".", "", $ablogcmsVersion)."_".date(mdHi);
+$dbCreate   = 'checked';
+$dbUser     = 'root';
+$dbPass     = '';
+
+
+// --------------------------
 // 動作チェック
 // --------------------------
 
@@ -85,57 +87,57 @@ $versionArray = explode(".", phpversion());
 $version = $versionArray[0].".".$versionArray[1];
 
 if (PHP_INT_SIZE == 4) {
-	$bits = "x86";
+  $bits = "x86";
 } else {
-	$bits = "x86-64";
+  $bits = "x86-64";
 }
 
 if ($versionArray[0] == 7) {
 
-	switch ($versionArray[1]) {
-		case 0:
-			$download = $download56;
-			$zipAfterDirName = $zipAfterDirName56;
-			$vc = "vc14";
-			break;
-		case 1:
-			$download = $download71;
-			$zipAfterDirName = $zipAfterDirName71;
-			$vc = "vc14";
-			break;
-		case 2:
-			$download = $download71;
-			$zipAfterDirName = $zipAfterDirName71;
-			$vc = "vc15";
-			break;
-		case 3:
-			$download = $download71;
-			$zipAfterDirName = $zipAfterDirName71;
-			$vc = "vc15";
+  switch ($versionArray[1]) {
+    case 0:
+      $download = $download56;
+      $zipAfterDirName = $zipAfterDirName56;
+      $vc = "vc14";
+      break;
+    case 1:
+      $download = $download71;
+      $zipAfterDirName = $zipAfterDirName71;
+      $vc = "vc14";
+      break;
+    case 2:
+      $download = $download71;
+      $zipAfterDirName = $zipAfterDirName71;
+      $vc = "vc15";
+      break;
+    case 3:
+      $download = $download71;
+      $zipAfterDirName = $zipAfterDirName71;
+      $vc = "vc15";
     case 4:
       $download = $download71;
       $zipAfterDirName = $zipAfterDirName71;
       $vc = "vc15";
-      			break;
-		default:
-			echo 'php version Error ! : '.$download;
-			exit;
-	}
+            break;
+    default:
+      echo 'php version Error ! : '.$download;
+      exit;
+  }
 
 } elseif ($versionArray[0] == 5) {
 
-	switch ($versionArray[1]) {
+  switch ($versionArray[1]) {
 
-		case 6:
-			$download = $download56;
-			$zipAfterDirName = $zipAfterDirName56;
-			$vc = "vc11";
-			break;
+    case 6:
+      $download = $download56;
+      $zipAfterDirName = $zipAfterDirName56;
+      $vc = "vc11";
+      break;
 
-		default:
-			echo 'php version Error ! : '.$download;
-			exit;
-	}
+    default:
+      echo 'php version Error ! : '.$download;
+      exit;
+  }
 } else {
     echo 'php version Error ! : '.$download;
     exit;
@@ -241,9 +243,15 @@ if($res === true){
 // php.ini の設定
 // --------------------------
 
-# php.ini のパスを設定する
 $phpiniDir = explode("\htdocs",$installPath);
-$iniFile = $phpiniDir[0]."\php\php.ini";
+if (preg_match("/MAMP/i", $installPath)) {
+  $iniFile = $phpiniDir[0]."\conf\php".phpversion()."\php.ini";
+  $dbPass     = 'root';
+  $systemName = "MAMP";
+} else {
+  $iniFile = $phpiniDir[0]."\php\php.ini";
+  $systemName = "XAMPP";
+}
 
 # 追記する設定内容
 $iniData = sprintf("\r\n\r\ndate.timezone = 'Asia/Tokyo'\r\n\r\nzend_extension = \"%s\ioncube\ioncube_loader_win_%d.%d.dll\"",$installPath,$versionArray[0],$versionArray[1]);
@@ -252,12 +260,12 @@ $file = file_get_contents($iniFile);
 
 if (preg_match("/ioncube_loader/i", $file)) {
 
-	# 設定済み
+  # 設定済み
 
 } else {
-	$file = fopen( $iniFile, "a+" );
-	fwrite( $file, $iniData );
-	fclose( $file );
+  $file = fopen( $iniFile, "a+" );
+  fwrite( $file, $iniData );
+  fclose( $file );
 }
 
 // --------------------------
@@ -265,7 +273,7 @@ if (preg_match("/ioncube_loader/i", $file)) {
 // --------------------------
 
 if ( is_file($installPath."/htaccess.txt") ) {
-	rename($installPath."/htaccess.txt", $installPath.'/.htaccess');
+  rename($installPath."/htaccess.txt", $installPath.'/.htaccess');
 }
 
 // --------------------------
@@ -288,7 +296,7 @@ file_put_contents($db_default, $data);
 
 if ( is_file($zipFile) ) unlink($zipFile);
 if ( is_file($zipFileIoncube) ) unlink($zipFileIoncube);
-if ( is_file($phpName) ) unlink($phpName);
+# if ( is_file($phpName) ) unlink($phpName);
 
 if ( is_file($installPath."/ioncube/loader-wizard.php") ) unlink($installPath."/ioncube/loader-wizard.php");
 
@@ -300,7 +308,7 @@ dir_shori ("delete", $zipAfterDirName);
 // --------------------------
 
 $jump = "http://".$_SERVER['HTTP_HOST'].str_replace($phpName, "", $_SERVER['SCRIPT_NAME']);
-echo sprintf('<p style="text-align:center; margin-top:100px">XAMPPを再起動して <a href="%s">%s</a> にアクセスしてください。</p>',$jump,$jump);
+echo sprintf('<p style="text-align:center; margin-top:100px">%sを再起動して <a href="%s">%s</a> にアクセスしてください。</p>',$systemName,$jump,$jump);
 
 // --------------------------
 // ディレクトリを操作 function ( move / copy / delete )
