@@ -9,18 +9,34 @@
 
 set_time_limit(0);
 
-// --------------------------
+// ====================================================
 //
 // macOS MAMP用 a-blog cms 2.11.x 簡単セットアップ
 //
+// ====================================================
+
+// --------------------------
+// a-blog cms バージョン設定
 // --------------------------
 
-$ablogcmsVersion = ""; #サイトからバージョンを自動チェック
+// ERROR になる場合や 2.11系のバージョンを指定したい場合には、以下の # を外してバージョンを設定ください。
 
-# ERROR になる場合や 2.11系のバージョンを
-# 指定したい場合には、バージョンを設定してください。
+# $ablogcmsVersion = "2.11.0";
 
-#$ablogcmsVersion = "2.11.0";
+// --------------------------
+// 特製テーマ設定
+// --------------------------
+
+// 標準テーマ以外でインストールする際には、以下の # を外して設定ください。
+
+// ダウンロードファイル
+
+# $theme_download = "https://www.a-blogcms.jp/_download/utsuwa.zip";
+
+// テーマ名
+
+# $theme_name = "utsuwa";
+
 
 // --------------------------
 // 現在の a-blog cms のバージョンをチェック
@@ -56,6 +72,7 @@ $zipAfterDirName71 = sprintf("acms%s_php7.1",$ablogcmsVersion);
 # 現在の PHP のバージョンを設定
 $versionArray = explode(".", phpversion());
 $version = $versionArray[0].".".$versionArray[1];
+
 
 
 // --------------------------
@@ -267,6 +284,7 @@ $data = sprintf("<?php
 $db_default = "./setup/lib/db_default.php";
 file_put_contents($db_default, $data);
 
+
 // --------------------------
 // ファイルの削除
 // --------------------------
@@ -285,6 +303,55 @@ dir_shori ("delete", "ioncube");
 
 # プログラム以外のディレクトリを削除
 dir_shori ("delete", $zipAfterDirName);
+
+
+// --------------------------
+// テーマファイルをダウンロード
+// --------------------------
+
+if ($theme_name) {
+
+  $zipThemeFile = $theme_name . ".zip";
+
+  $fp = fopen($theme_download, "r");
+  if ($fp !== FALSE) {
+      file_put_contents($zipThemeFile, "");
+      while(!feof($fp)) {
+          $buffer = fread($fp, 4096);
+          if ($buffer !== FALSE) {
+              file_put_contents($zipThemeFile, $buffer, FILE_APPEND);
+          }
+      }
+      fclose($fp);
+
+  } else {
+      echo 'theme '.$theme_name.' download Error ! : '.$theme_download;
+      exit;
+  }
+
+  $zip = new ZipArchive();
+  $res = $zip->open($zipThemeFile);
+
+  if($res === true){
+      $zip->extractTo($installPath);
+      $zip->close();
+
+  } else {
+      echo 'theme unZip Error ! : '. $zipThemeFile;
+      exit;
+  }
+
+  dir_shori("move", "./".$theme_name."/bin/".$theme_name, "./setup/bin/".$theme_name);
+  dir_shori("move", "./".$theme_name."/themes/".$theme_name, "./themes/".$theme_name);
+
+  rename("./".$theme_name."/tpl/install.html", "./setup/tpl/install.html");
+  rename("./".$theme_name."/img/".$theme_name.".jpg", "./setup/img/".$theme_name.".jpg");
+
+  dir_shori ("delete", $theme_name);
+  unlink($zipThemeFile);
+
+}
+
 
 // --------------------------
 // インストーラーに飛ぶ
