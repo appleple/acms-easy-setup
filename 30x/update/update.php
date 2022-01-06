@@ -1,20 +1,17 @@
 <?php
 
+# MYPAGE より 3.x 対応の license.php をダウンロードください。
+# https://mypage.a-blogcms.jp/
+
 // --------------------------
 //
-// a-blog cms 2.x -> 2.11.x update
+// a-blog cms 2.x -> 3.x update
 //
 // --------------------------
 
-# 今後は、このアップデートを利用することなく管理ページから
-# 可能になります。
+# 今後は、このアップデートを利用することなく管理ページから可能になります。
 
-$ablogcmsVersion = ""; #サイトからバージョンを自動チェック
-
-# ERROR になる場合や 2.11系のバージョンを
-# 指定したい場合には、バージョンを設定してください。
-
-#$ablogcmsVersion = "2.11.0";
+#$ablogcmsVersion = "3.0.0"; #バージョンを指定する際には行頭の # を削除してください。
 
 // --------------------------
 
@@ -23,18 +20,16 @@ $ablogcmsVersion = ""; #サイトからバージョンを自動チェック
 # 継承しているテーマは全て含まれます。
 # systemはアップデート対象になりますので指定しないでください。
 
-
-#$useThemes = "blog2016"; # "site2015|blog2015";
-
+#$useThemes = "blog2020"; # 複数の場合には | で区切って "site2020|blog2020";
 
 // --------------------------
 // 二重実行防止処理
 // --------------------------
 
-$lockFile = realpath('.') . "/update.lock";
+$lockFile = realpath('.'). "/update.lock";
 
 if (is_file($lockFile)) {
-  echo "lockFile:" . $lockFile;
+  echo "lockFile:".$lockFile;
   exit;
 } else {
   touch($lockFile);
@@ -45,7 +40,7 @@ if (is_file($lockFile)) {
 // --------------------------
 
 if (!$ablogcmsVersion) {
-  $check = download_version_check();
+  $check = download_version_check ();
   if ($check) {
     $ablogcmsVersion = $check;
   } else {
@@ -60,46 +55,32 @@ if (!$ablogcmsVersion) {
 $ymdhis = date("YmdHis");
 
 # ダウンロード元 URL
-$download55 = sprintf("http://developer.a-blogcms.jp/_package/%s/acms%s_update2x_php5.3.zip", $ablogcmsVersion, $ablogcmsVersion);
-$download56 = sprintf("http://developer.a-blogcms.jp/_package/%s/acms%s_update2x_php5.6.zip", $ablogcmsVersion, $ablogcmsVersion);
-$download71 = sprintf("http://developer.a-blogcms.jp/_package/%s/acms%s_update2x_php7.1.zip", $ablogcmsVersion, $ablogcmsVersion);
+$download = sprintf("http://developer.a-blogcms.jp/_package/%s/acms%s_update2x.zip",$ablogcmsVersion,$ablogcmsVersion);
 
 # ダウンロード後のZipファイル名
-$zipFile = sprintf("./acms_%s.zip", $ymdhis);
+$zipFile = sprintf("./acms%s_update2x.zip",$ablogcmsVersion);
 
 # 解凍後の全体フォルダ名
-$zipAfterDirName55 = sprintf("acms%s_update2x_php5.3", $ablogcmsVersion);
-$zipAfterDirName56 = sprintf("acms%s_update2x_php5.6", $ablogcmsVersion);
-$zipAfterDirName71 = sprintf("acms%s_update2x_php7.1", $ablogcmsVersion);
+$zipAfterDirName = sprintf("acms%s_update2x",$ablogcmsVersion);
 
 # 解凍後の a-blog cms のフォルダ名
 $cmsDirName = "ablogcms";
+
+$installPath = realpath('.');
+$ablogcmsDir = $installPath."/".$zipAfterDirName."/".$cmsDirName;
+$phpName = basename($_SERVER['PHP_SELF']);
 
 // --------------------------
 // バージョンチェック
 // --------------------------
 
 $versionArray = explode(".", phpversion());
-$version = $versionArray[0] . "." . $versionArray[1];
+$version = $versionArray[0].".".$versionArray[1];
 
-
-if ($versionArray[0] == 7 && $versionArray[1] > 0) {
-  $download = $download71;
-  $zipAfterDirName = $zipAfterDirName71;
-} elseif ($versionArray[0] == 7 && $versionArray[1] == 0) {
-  $download = $download56;
-  $zipAfterDirName = $zipAfterDirName56;
-} elseif ($versionArray[1] >= 6) {
-  $download = $download56;
-  $zipAfterDirName = $zipAfterDirName56;
-} else {
-  $download = $download55;
-  $zipAfterDirName = $zipAfterDirName55;
-}
-
-$installPath = realpath('.');
-$ablogcmsDir = $installPath . "/" . $zipAfterDirName . "/" . $cmsDirName;
-$phpName = basename($_SERVER['PHP_SELF']);
+if ($version < 7.2) {
+  echo "Installation error. Please use PHP 7.2 or higher.";
+  exit;
+} 
 
 // --------------------------
 // a-blog cms ファイルをダウンロード
@@ -107,17 +88,17 @@ $phpName = basename($_SERVER['PHP_SELF']);
 
 $fp = fopen($download, "r");
 if ($fp !== FALSE) {
-  file_put_contents($zipFile, "");
-  while (!feof($fp)) {
-    $buffer = fread($fp, 4096);
-    if ($buffer !== FALSE) {
-      file_put_contents($zipFile, $buffer, FILE_APPEND);
+    file_put_contents($zipFile, "");
+    while(!feof($fp)) {
+        $buffer = fread($fp, 4096);
+        if ($buffer !== FALSE) {
+            file_put_contents($zipFile, $buffer, FILE_APPEND);
+        }
     }
-  }
-  fclose($fp);
+    fclose($fp);
 } else {
-  echo 'a-blog cms download Error ! : ' . $download;
-  exit;
+    echo 'a-blog cms download Error ! : '.$download;
+    exit;
 }
 
 // --------------------------
@@ -127,40 +108,41 @@ if ($fp !== FALSE) {
 $zip = new ZipArchive();
 $res = $zip->open($zipFile);
 
-if ($res === true) {
-  $zip->extractTo($installPath);
-  $zip->close();
+if($res === true){
+    $zip->extractTo($installPath);
+    $zip->close();
+
 } else {
-  echo 'a-blog cms unZip Error ! : ' . $zipFile;
-  exit;
+    echo 'a-blog cms unZip Error ! : '. $zipFile;
+    exit;
 }
 
 // --------------------------
 // バックアップ
 // --------------------------
 
-$backupDir = "backup_" . $ymdhis;
+$backupDir = "backup_". $ymdhis;
 
 # バックアップディレクトリを作成
 mkdir($backupDir);
 
 # ファイルを移動
-if (is_file("./acms.js")) rename("./acms.js", $backupDir . "/acms.js");
-if (is_file("./index.js")) rename("./index.js", $backupDir . "/index.js");
-if (is_file("./500.html")) rename("./500.html", $backupDir . "/500.html");
-rename("./index.php", $backupDir . "/index.php");
+if (is_file("./acms.js")) rename("./acms.js", $backupDir."/acms.js");
+if (is_file("./index.js")) rename("./index.js", $backupDir."/index.js");
+if (is_file("./500.html")) rename("./500.html", $backupDir."/500.html");
+rename("./index.php", $backupDir."/index.php");
 
 # ディレクトリを移動
 
-dir_shori("move", "./js", $backupDir . "/js");
-dir_shori("move", "./lang", $backupDir . "/lang");
-dir_shori("move", "./php", $backupDir . "/php");
-dir_shori("move", "./private", $backupDir . "/private");
-dir_shori("move", "./themes", $backupDir . "/themes");
+dir_shori("move", "./js", $backupDir."/js");
+dir_shori("move", "./lang", $backupDir."/lang");
+dir_shori("move", "./php", $backupDir."/php");
+dir_shori("move", "./private", $backupDir."/private");
+dir_shori("move", "./themes", $backupDir."/themes");
 
-if (is_dir("./cache")) dir_shori("move", "./cache", $backupDir . "/cache");
-if (is_dir("./extension")) dir_shori("move", "./extension", $backupDir . "/extension");
-
+if (is_dir("./extension")) dir_shori("move", "./extension", $backupDir."/extension");
+#if (is_dir("./cache")) dir_shori("move", "./cache", $backupDir."/cache");
+dir_shori ("delete", "cache");
 
 // --------------------------
 // update版 ファイル＆ディレクトリを移動
@@ -169,7 +151,7 @@ if (is_dir("./extension")) dir_shori("move", "./extension", $backupDir . "/exten
 dir_shori("move", $ablogcmsDir, $installPath);
 
 # 運用中のものを利用するので新しいファイルは削除
-unlink($installPath . "/htaccess.txt");
+unlink($installPath ."/htaccess.txt");
 
 // --------------------------
 // カスタマイズ部分を戻す
@@ -177,63 +159,69 @@ unlink($installPath . "/htaccess.txt");
 
 # themes を戻す
 if (isset($useThemes)) {
-  if ($handle = opendir($backupDir . "/themes")) {
-    while (false !== ($theme = readdir($handle))) {
-      if ($theme != "." && $theme != "..") {
-        if (preg_match("/" . $useThemes . "/", $theme)) {
-          if (is_dir("./themes/" . $theme)) {
-            rename("./themes/" . $theme, "./themes/" . $theme . "_" . $ablogcmsVersion);
-          }
-          dir_shori("copy", $backupDir . "/themes/" . $theme, "./themes/" . $theme);
+if ($handle = opendir($backupDir."/themes")) {
+  while(false !== ($theme = readdir($handle))) {
+    if ($theme != "." && $theme != "..") {
+      if (preg_match("/".$useThemes."/", $theme)) {
+        if (is_dir("./themes/".$theme)) {
+          rename ("./themes/".$theme, "./themes/".$theme."_".$ablogcmsVersion);
         }
+        dir_shori ("copy", $backupDir."/themes/".$theme, "./themes/".$theme);
       }
     }
-    closedir($handle);
   }
+  closedir($handle);
+}
 }
 
 # /php/ACMS/User を戻す
-rename("./php/ACMS/User", "./php/ACMS/User_" . $ablogcmsVersion);
-dir_shori("copy", $backupDir . "/php/ACMS/User", "./php/ACMS/User");
+rename ("./php/ACMS/User","./php/ACMS/User_".$ablogcmsVersion);
+dir_shori ("copy", $backupDir."/php/ACMS/User", "./php/ACMS/User");
 
 # php/AAPP を戻す
-rename("./php/AAPP", "./php/AAPP_" . $ablogcmsVersion);
-dir_shori("copy", $backupDir . "/php/AAPP", "./php/AAPP");
+rename ("./php/AAPP", "./php/AAPP_".$ablogcmsVersion);
+dir_shori ("copy", $backupDir."/php/AAPP", "./php/AAPP");
 
 # /private/config.system.yaml を戻す
-rename("./private/config.system.yaml", "./private/config.system_" . $ablogcmsVersion . ".yaml");
-copy($backupDir . "/private/config.system.yaml", "./private/config.system.yaml");
+rename ("./private/config.system.yaml", "./private/config.system_".$ablogcmsVersion.".yaml");
+copy ($backupDir."/private/config.system.yaml", "./private/config.system.yaml");
 
 # /extension を戻す
-if (is_dir($backupDir . "/extension")) {
-  rename("./extension", "./extension_" . $ablogcmsVersion);
-  dir_shori("copy", $backupDir . "/extension", "./extension");
+if (is_dir($backupDir."/extension")) {
+  rename ("./extension","./extension_".$ablogcmsVersion);
+  dir_shori ("copy", $backupDir."/extension", "./extension");
 }
 
 // --------------------------
 // .htaccess の設定
 // --------------------------
+
+rename("./htaccess.txt", './htaccess_'.$ablogcmsVersion.'.txt');
+
 rename("./private/htaccess.txt", './private/.htaccess');
 rename("./themes/htaccess.txt", './themes/.htaccess');
 rename("./cache/htaccess.txt", './cache/.htaccess');
+rename("./editorconfig.txt", './.editorconfig');
+rename("./env.txt", './.env');
+rename("./gitignore.txt", './.gitignore');
 
 // --------------------------
 // php.ini があった時の処理
 // --------------------------
 
-if (is_file("./php.ini")) {
-  copy("./php.ini", "./setup/php.ini");
+if ( is_file( "./php.ini" )) {
+    copy("./php.ini", "./setup/php.ini");
 }
 
 // --------------------------
 // ファイルの削除
 // --------------------------
 
-unlink($zipFile);
-unlink($phpName);
+#unlink($zipFile);
+#unlink($phpName);
 
 # プログラム以外のディレクトリを削除
-if (is_file("./index.php")) {
+if ( is_file( "./index.php" )) {
   dir_shori("delete", $zipAfterDirName);
 } else {
   echo "update error!";
@@ -253,8 +241,7 @@ header("Location: " . $jump);
 // ディレクトリを操作 function ( move / copy / delete )
 // --------------------------
 
-function dir_shori($shori, $nowDir, $newDir = "")
-{
+function dir_shori ($shori, $nowDir , $newDir="") {
 
   if ($shori != "delete") {
     if (!is_dir($newDir)) {
@@ -267,18 +254,18 @@ function dir_shori($shori, $nowDir, $newDir = "")
       while (($file = readdir($handle)) !== false) {
         if ($file != "." && $file != "..") {
           if ($shori == "copy") {
-            if (is_dir($nowDir . "/" . $file)) {
-              dir_shori("copy", $nowDir . "/" . $file, $newDir . "/" . $file);
+            if (is_dir($nowDir."/".$file)) {
+              dir_shori("copy", $nowDir."/".$file, $newDir."/".$file);
             } else {
-              copy($nowDir . "/" . $file, $newDir . "/" . $file);
+              copy($nowDir."/".$file, $newDir."/".$file);
             }
           } elseif ($shori == "move") {
-            rename($nowDir . "/" . $file, $newDir . "/" . $file);
+            rename($nowDir."/".$file, $newDir."/".$file);
           } elseif ($shori == "delete") {
-            if (filetype($nowDir . "/" . $file) == "dir") {
-              dir_shori("delete", $nowDir . "/" . $file, "");
+            if (filetype($nowDir."/".$file) == "dir") {
+              dir_shori("delete", $nowDir."/".$file, "");
             } else {
-              unlink($nowDir . "/" . $file);
+              unlink($nowDir."/".$file);
             }
           }
         }
@@ -294,20 +281,20 @@ function dir_shori($shori, $nowDir, $newDir = "")
   return true;
 }
 
-/**
- * Version 2.11.x のチェック用
- * 正常にチェックできない場合には 空 でかえす。
- */
-function download_version_check()
-{
-  $options['ssl']['verify_peer'] = false;
-  $options['ssl']['verify_peer_name'] = false;
-  $html = file_get_contents('https://developer.a-blogcms.jp/download/', false, stream_context_create($options));
-  preg_match('/<h1 class="entry-title" id="(.*)"><a href="https:\/\/developer.a-blogcms.jp\/download\/package\/2.11.(.*).html">(.*)<\/a><\/h1>/', $html, $matches);
+function download_version_check () {
+
+  // Version 3.0.x のチェック用
+  // 正常にチェックできない場合には 空 でかえす。
+
+  $options['ssl']['verify_peer']=false;
+  $options['ssl']['verify_peer_name']=false;
+  $html=file_get_contents('https://developer.a-blogcms.jp/download/', false, stream_context_create($options));
+  preg_match('/<h1 class="entry-title" id="(.*)"><a href="https:\/\/developer.a-blogcms.jp\/download\/package\/3.0.(.*).html">(.*)<\/a><\/h1>/',$html,$matches);
 
   if (is_numeric($matches[2])) {
-    return "2.11." . $matches[2];
+    return "3.0.".$matches[2];
   } else {
     return;
   }
+
 }
