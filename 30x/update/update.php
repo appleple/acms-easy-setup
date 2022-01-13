@@ -130,7 +130,10 @@ mkdir($backupDir);
 if (is_file("./acms.js")) rename("./acms.js", $backupDir."/acms.js");
 if (is_file("./index.js")) rename("./index.js", $backupDir."/index.js");
 if (is_file("./500.html")) rename("./500.html", $backupDir."/500.html");
+
 rename("./index.php", $backupDir."/index.php");
+
+rename ("./license.php", $backupDir."/license.php");
 
 # ディレクトリを移動
 
@@ -150,8 +153,8 @@ dir_shori ("delete", "cache");
 
 dir_shori("move", $ablogcmsDir, $installPath);
 
-# 運用中のものを利用するので新しいファイルは削除
-unlink($installPath ."/htaccess.txt");
+# 3.0対応 ライセンスファイル に上書き（ライセンス切れになります）
+rename ($installPath."/".$zipAfterDirName."/omake/license.php", "./license.php");
 
 // --------------------------
 // カスタマイズ部分を戻す
@@ -217,8 +220,8 @@ if ( is_file( "./php.ini" )) {
 // ファイルの削除
 // --------------------------
 
-#unlink($zipFile);
-#unlink($phpName);
+unlink($zipFile);
+unlink($phpName);
 
 # プログラム以外のディレクトリを削除
 if ( is_file( "./index.php" )) {
@@ -296,5 +299,4 @@ function download_version_check () {
   } else {
     return;
   }
-
 }
