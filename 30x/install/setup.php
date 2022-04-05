@@ -25,41 +25,164 @@ $dbCreate   = '';
 $dbUser     = '';
 $dbPass     = '';
 
+
+// --------------------------
+// CPI向け PHP設定
+// --------------------------
+
+# .htaccess で PHPのバージョン指定が必要です。
+# 動作させる PHP のバージョンを指定してください。
+# ACE01 2011 利用できません
+# ACE01 2015 PHP 7.2 / 7.4
+# ACE01 2018 PHP 7.2 / 7.3 / 7.4 / 8.0
+# SV-Baisc   PHP 7.2 / 7.3 / 7.4 / 8.0
+
+$cpi_php_version = "8.0";
+
+// --------------------------
+// 追加ファイルダウンロードURL
+// --------------------------
+
+$download_url = "http://www.a-blogcms.jp/_download/";
+
 // --------------------------
 // 特製テーマ設定
 // --------------------------
 
-// 標準テーマ以外でインストールする際には、以下の # を外して設定ください。
+#$theme_zip_file = "square.zip";
 
-// ダウンロードファイル
+# 特製テーマと拡張アプリのダウンロード先が違う場合には個別に設定ください。
+$theme_download_url = $download_url;
 
-# $theme_download = "https://www.a-blogcms.jp/_download/utsuwa.zip";
+// --------------------------
+// 拡張アプリ設定
+// --------------------------
 
-// テーマ名
+#$plugins_zip_file = "ShoppingCart_100.zip";
 
-# $theme_name = "utsuwa";
+# 特製テーマと拡張アプリのダウンロード先が違う場合には個別に設定ください。
+$plugins_download_url = $download_url;
+
+// --------------------------
+
+$error_msg = array();
+
+if (!isset($ablogcmsVersion)) {
+  $check = download_version_check();
+  if ($check) {
+    $ablogcmsVersion = $check;
+  } else {
+    $error_msg[] = "web site version check error.";
+  }
+}
+
+$versionArray = explode(".", phpversion());
+$version = $versionArray[0] . "." . $versionArray[1];
+
+$server = gethostbyaddr($_SERVER['SERVER_ADDR']);
+$cpi_check_array = explode( ".", $server );
+$cpi_check = "";
+
+if (is_array($cpi_check_array) && count($cpi_check_array) > 1) {
+  $cpi_check = $cpi_check_array[1];
+}
+
+if ($cpi_check == "secure") {
+  if ($cpi_php_version) {
+    $moto_version = $version;
+    $version = $cpi_php_version;
+  }
+  $cpi_htaccess_php = str_replace('.','', $version);
+}
+
+$phpName = basename($_SERVER['PHP_SELF']);
+
+// --------------------------
+// 動作チェック
+// --------------------------
+
+if (is_file("./license.php")) {
+  $error_msg[] = "インストール先に license.php が見つかりました。<br>インストールを中止します。";
+}
+
+// --------------------------
+// バージョンのチェック
+// --------------------------
+
+if ($version < 7.2 || $version >= 8.1) {
+
+  if ($cpi_check == "secure") {
+    $error_msg[] = $phpName." の \$cpi_php_version で PHP のバージョンを指定ください。";
+  } else {
+    $error_msg[] = "PHP 7.2.x - 8.0.x をご利用ください。";
+  }
+} 
+
+# ダウンロード元 URL
+$download = sprintf("http://developer.a-blogcms.jp/_package/%s/acms%s.zip", $ablogcmsVersion, $ablogcmsVersion);
+$zipFile = sprintf("./acms%s.zip", $ablogcmsVersion);
+
+$http_header = get_headers($download);
+$httt_hedaer0_code = explode(" ",$http_header[0]);
+if ( $httt_hedaer0_code[1] != "200" ) {
+  $error_msg[] = "a-blog cms のバーンジョン設定「".$ablogcmsVersion."」が間違っています。";
+}
+
+$installPath = realpath('.');
+$http_host = explode(":", $_SERVER['HTTP_HOST']);
+
+if (is_file($installPath."/".$zipFile) || is_file($installPath."/".$zipFile)) {
+  $_POST['action'] = "";
+}
+
+
+?>
+<!DOCTYPE html>
+    <html lang="ja">
+    <head>
+    <meta charset="UTF-8">
+    <title>a-blog cms Ver. 3.x 簡単セットアップ</title>
+    <style>
+      body {
+        padding : 10px 30px;
+        background-color : #ddd;
+        font-family: Futura;
+      }
+      input {
+        font-size: 18px;
+        font-weight : bold;
+        padding :5px 20px;
+        margin-top : 20px;
+      }
+      li {
+        font-weight : bold;
+      }
+      p.error {
+        color : #A00;
+        font-weight : bold;
+      }
+    </style>
+    <script>
+      var set=0;
+      function double() {
+        if(set==0){ set=1; } else {
+          alert("ただいまセットアップ中です。\nしばらく、お待ちください。");
+          return false; }}
+    </script>
+    </head>
+    <body>
+    <h1>a-blog cms Ver. <?php echo $ablogcmsVersion; ?> 簡単セットアップ</h1>
+<?php
 
 // --------------------------
 // 現在の a-blog cms のバージョンをチェック
 // --------------------------
 
-if (!$ablogcmsVersion) {
-  $check = download_version_check();
-  if ($check) {
-    $ablogcmsVersion = $check;
-  } else {
-    echo "web site version check error.";
-    exit;
-  }
-}
+$input_action = filter_input(INPUT_POST, "action");
+
+if ($input_action == "セットアップ開始") {
 
 // --------------------------
-
-# ダウンロード元 URL
-$download = sprintf("http://developer.a-blogcms.jp/_package/%s/acms%s.zip", $ablogcmsVersion, $ablogcmsVersion);
-
-# ダウンロード後のZipファイル名
-$zipFile = sprintf("./acms%s.zip", $ablogcmsVersion);
 
 # 解凍後の全体フォルダ名
 $zipAfterDirName = sprintf("acms%s", $ablogcmsVersion);
@@ -69,14 +192,9 @@ $ablogcmsVersionNum = str_replace(".", "", $ablogcmsVersion);
 # 解凍後の a-blog cms のフォルダ名
 $cmsDirName = "ablogcms";
 
-$installPath = realpath('.');
-$phpName = basename($_SERVER['PHP_SELF']);
-$http_host = explode(":", $_SERVER['HTTP_HOST']);
-
 $ablogcmsDir = $installPath . "/" . $zipAfterDirName . "/" . $cmsDirName . "/";
 
-$versionArray = explode(".", phpversion());
-$version = $versionArray[0] . "." . $versionArray[1];
+
 
 $mdHi = date("mdHi");
 
@@ -96,24 +214,6 @@ if ($http_host[0] == 'localhost') {
   if ($mamp_check[2] == 'MAMP') {
     $dbPass     = 'root';
   }
-}
-
-// --------------------------
-// 動作チェック
-// --------------------------
-
-if (is_file("./license.php")) {
-  echo "Installation error. Please use the updated version.";
-  exit;
-}
-
-// --------------------------
-// バージョンのチェック
-// --------------------------
-
-if ($version < 7.2) {
-  echo "Installation error. Please use PHP 7.2 or higher.";
-  exit;
 }
 
 // --------------------------
@@ -181,8 +281,24 @@ if (is_file($moto_htaccessFile)) {
   fwrite($file, $htaccessData);
   fwrite($file, "\n\n" . $cms_htaccessData);
   fclose($file);
+
 } else {
+
   rename($installPath . "/htaccess.txt", $installPath . '/.htaccess');
+
+  if ($cpi_check == "secure") { 
+
+    $htaccess = file_get_contents($installPath."/.htaccess");    
+    $cpi_htaccess = sprintf("<Files ~ \"\.ini\">
+deny from all
+</Files>
+Options +SymLinksIfOwnerMatch
+AddHandler x-httpd-php%s .php\n\n",$cpi_htaccess_php);
+
+  $fp = fopen($installPath."/.htaccess",'w');
+  fwrite($fp,$cpi_htaccess.$htaccess);
+  fclose($fp);
+  } 
 }
 
 rename($installPath . "/editorconfig.txt", $installPath . '/.editorconfig');
@@ -216,6 +332,8 @@ file_put_contents($db_default, $data);
 unlink($zipFile);
 unlink($phpName);
 
+
+
 # index.html があった時にリネームしておく
 if (is_file("./index.html")) {
   rename("./index.html", "_index.html");
@@ -228,56 +346,217 @@ dir_shori("delete", $zipAfterDirName);
 // 特製テーマファイルをダウンロード 
 // --------------------------
 
-if ($theme_name) {
+if (isset($theme_zip_file)) {
 
-  $zipThemeFile = $theme_name . ".zip";
-
-  $fp = fopen($theme_download, "r");
+  $theme_name_version = explode(".",$theme_zip_file);
+  $theme_name_array = explode("_",$theme_name_version[0]);
+  $theme_name = $theme_name_array[0];
+  $theme_zip_url = $theme_download_url . $theme_zip_file;
+  $theme_path = $installPath."/".$theme_name;
+  
+  $fp = fopen($theme_zip_url, "r");
   if ($fp !== FALSE) {
-    file_put_contents($zipThemeFile, "");
+    file_put_contents($theme_zip_file, "");
     while (!feof($fp)) {
       $buffer = fread($fp, 4096);
       if ($buffer !== FALSE) {
-        file_put_contents($zipThemeFile, $buffer, FILE_APPEND);
+        file_put_contents($theme_zip_file, $buffer, FILE_APPEND);
       }
     }
     fclose($fp);
   } else {
-    echo 'theme ' . $theme_name . ' download Error ! : ' . $theme_download;
+    echo 'theme ' . $theme_name . ' download Error ! : ' . $theme_zip_url;
     exit;
   }
 
   $zip = new ZipArchive();
-  $res = $zip->open($zipThemeFile);
+  $res = $zip->open($theme_zip_file);
 
   if ($res === true) {
     $zip->extractTo($installPath);
     $zip->close();
   } else {
-    echo 'theme unZip Error ! : ' . $zipThemeFile;
+    echo 'theme unZip Error ! : ' . $theme_zip_url;
     exit;
   }
 
-  dir_shori("move", "./" . $theme_name . "/bin/" . $theme_name, "./setup/bin/" . $theme_name);
-  dir_shori("move", "./" . $theme_name . "/themes/" . $theme_name, "./themes/" . $theme_name);
+  dir_shori("move", $theme_path . "/bin/" . $theme_name, $installPath . "/setup/bin/" . $theme_name);
+  dir_shori("move", $theme_path . "/themes/" . $theme_name, $installPath . "/themes/" . $theme_name);
 
-  rename("./" . $theme_name . "/tpl/install.html", "./setup/tpl/install.html");
-  rename("./" . $theme_name . "/img/" . $theme_name . ".jpg", "./setup/img/" . $theme_name . ".jpg");
+  rename( $theme_path . "/tpl/install.html", $installPath . "/setup/tpl/install.html");
+  rename( $theme_path . "/img/" . $theme_name . ".jpg", $installPath . "/setup/img/" . $theme_name . ".jpg");
+
+  $check_plugins = $theme_path."/plugins";
+  if (is_dir($check_plugins)) {
+      if ($handle = opendir($check_plugins)) {
+        while (($file = readdir($handle)) !== false) {
+          if ($file != "." && $file != "..") {
+            if (is_dir($check_plugins."/".$file)) {
+              dir_shori("move", $check_plugins."/".$file, $installPath."/extension/plugins/".$file);
+            }
+          }
+        }
+        closedir($handle);
+      }
+  }
 
   dir_shori("delete", $theme_name);
-  unlink($zipThemeFile);
+  unlink($theme_zip_file);
+}
+
+// --------------------------
+// 拡張アプリをダウンロード 
+// --------------------------
+
+if (isset($plugins_zip_file)) {
+
+  $plugins_array = explode("|",$plugins_zip_file);
+
+  foreach($plugins_array as $plugins_zip) {
+
+    $plugins_name_version = explode(".",$plugins_zip);
+    $plugins_name_array = explode("_",$plugins_name_version[0]);
+    $plugins_name = $plugins_name_array[0];
+    $plugins_zip_url = $plugins_download_url . $plugins_zip;
+
+    $fp = fopen($plugins_zip_url, "r");
+    if ($fp !== FALSE) {
+      file_put_contents($plugins_zip, "");
+      while (!feof($fp)) {
+        $buffer = fread($fp, 4096);
+        if ($buffer !== FALSE) {
+          file_put_contents($plugins_zip, $buffer, FILE_APPEND);
+        }
+      }
+      fclose($fp);
+    } else {
+      echo 'plugin download Error ! : ' . $plugins_zip_url;
+      exit;
+    }
+
+    $zip = new ZipArchive();
+    $res = $zip->open($plugins_zip);
+
+    if ($res === true) {
+      $zip->extractTo($installPath);
+      $zip->close();
+    } else {
+      echo 'theme unZip Error ! : ' . $plugins_zip;
+      exit;
+    }
+
+    dir_shori("move", $installPath ."/". $plugins_name, $installPath."/extension/plugins/" . $plugins_name);
+    unlink($plugins_zip);
+  }
+
 }
 
 // --------------------------
 // インストーラーに飛ぶ
 // --------------------------
 
-$jump = str_replace($phpName, "", $_SERVER['SCRIPT_NAME']);
-header("Location: " . $jump);
+?>
+  
+  <h2>セットアップ完了</h2>
+
+  <p>a-blog cms のインストール準備が完了しました。</p>
+  <p>この <?php echo $phpName; ?>ファイルについては削除済みです。</p>
+
+  <form action="index.php" method="POST">
+  <input type="submit" name="action" value="インストーラーへ移動">
+  </form>
+
+<?php
+
+} else {
+  
+  ?>
+
+  <p>a-blog cms のパッケージのダウンロードとファイルのリネーム作業を行います。</p>
+
+  <h2>PHP バージョンチェック</h2>
+
+  <ul><li>Ver. <?php 
+  if ($cpi_php_version && $cpi_check == "secure") {
+    echo "<del>";
+  }
+  
+  echo phpversion();
+
+  if ($cpi_php_version && $cpi_check == "secure") {
+    echo "</del> → ". $version . "(変更)";
+  }
+  ?></li></ul>
+
+<?php
+
+if (isset($theme_zip_file)) {
+
+$theme_name_version = explode(".",$theme_zip_file);
+$theme_name = explode("_",$theme_name_version[0]);
+echo "<h2>Special Theme Install</h2>";
+
+
+$check = $theme_download_url.$theme_zip_file;
+$http_header = get_headers($check);
+$httt_hedaer0_code = explode(" ",$http_header[0]);
+if ( $httt_hedaer0_code[1] != "200" ) {
+  $error_msg[] = "特製テーマ「".$theme_name[0]."」のダウンロード先の情報が間違っています。";
+  echo "<ul><li><del>".$theme_name[0]."</del></li></ul>";
+} else {
+  echo "<ul><li>".$theme_name[0]."</li></ul>";
+}
+}
+
+if (isset($plugins_zip_file)) {
+
+$plugins_array = explode("|",$plugins_zip_file);
+echo "<h2>Plugins Install</h2>";
+echo "<ul>";
+
+foreach($plugins_array as $plugins_zip) {
+
+  $plugins_name_version = explode(".",$plugins_zip);
+  $plugins_name = explode("_",$plugins_name_version[0]);
+
+  $check = $plugins_download_url.$plugins_zip;
+  $http_header = get_headers($check);
+  $httt_hedaer0_code = explode(" ",$http_header[0]);
+
+  if ( $httt_hedaer0_code[1] != "200" ) {
+    $error_msg[] = "拡張アプリ「".$plugins_name[0]."」のダウンロード先の情報が間違っています。";
+    echo "<li><del>".$plugins_name[0]."</del></li>";  
+  } else {
+    echo "<li>".$plugins_name[0]."</li>";  
+  }     
+}
+echo "</ul>";
+}
+
+  if (empty($error_msg)){
+    ?>
+
+<form action="<?php echo $phpName; ?>" method="POST" onSubmit="return double()">
+<input type="submit" name="action" value="セットアップ開始">
+</form>
+
+    <?php
+  } else {
+    echo "<h2>Error</h2>";
+    foreach($error_msg as $msg) {
+      echo sprintf("<p class='error'>%s</p>",$msg);
+    }
+  }
+
+
+
+}
 
 exit;
-
-
+?>
+</body>
+</html>
+<?php
 // --------------------------
 // ディレクトリを操作 function ( move / copy / delete )
 // --------------------------
