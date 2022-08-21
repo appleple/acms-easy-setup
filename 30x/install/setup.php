@@ -1,17 +1,16 @@
 <?php
 
-// --------------------------
-//
+// ------------------------------
 // a-blog cms 3.x 簡単セットアップ
+//       last update 2021/08/21
+// ------------------------------
+
+# $ablogcmsVersion = '3.0.0';
+
+// ERROR になる場合や個別に 3.0.x系のバージョンを
+// 指定したい場合には、バージョンを設定してください。
 //
-// --------------------------
-
-# $ablogcmsVersion = '3.0.0'; # コメントすることで、3.0系の最新版にアップデートします。
-
-# ERROR になる場合や個別に 3.0.x系のバージョンを
-# 指定したい場合には、バージョンを設定してください。
-#
-# 2.x のバージョンについては 2.x系の簡単セットアップをご利用ください。
+// 2.x のバージョンについては 2.x系の簡単セットアップをご利用ください。
 
 // --------------------------
 
@@ -24,7 +23,6 @@ $dbName     = '';
 $dbCreate   = '';
 $dbUser     = '';
 $dbPass     = '';
-
 
 // --------------------------
 // CPI向け PHP設定
@@ -40,28 +38,20 @@ $dbPass     = '';
 $cpi_php_version = "8.0";
 
 // --------------------------
-// 追加ファイルダウンロードURL
-// --------------------------
-
-$download_url = "http://www.a-blogcms.jp/_download/";
-
-// --------------------------
 // 特製テーマ設定
 // --------------------------
 
-#$theme_zip_file = "square.zip";
+$theme_download_url = "http://www.a-blogcms.jp/_download/";
 
-# 特製テーマと拡張アプリのダウンロード先が違う場合には個別に設定ください。
-$theme_download_url = $download_url;
+# $theme_zip_file = "square.zip";
+# $theme_zip_file = "smartblock@blog.zip";
 
 // --------------------------
 // 拡張アプリ設定
 // --------------------------
 
-#$plugins_zip_file = "ShoppingCart_100.zip";
-
-# 特製テーマと拡張アプリのダウンロード先が違う場合には個別に設定ください。
-$plugins_download_url = $download_url;
+# $plugins_zip_file = "ShoppingCart_100.zip";
+# $plugins_download_url = "http://www.a-blogcms.jp/_download/";
 
 // --------------------------
 
@@ -109,12 +99,12 @@ if (is_file("./license.php")) {
 // バージョンのチェック
 // --------------------------
 
-if ($version < 7.2 || $version >= 8.1) {
+if ($version < 7.2 || $version >= 8.2) {
 
   if ($cpi_check == "secure") {
     $error_msg[] = $phpName." の \$cpi_php_version で PHP のバージョンを指定ください。";
   } else {
-    $error_msg[] = "PHP 7.2.x - 8.0.x をご利用ください。";
+    $error_msg[] = "PHP 7.2.x - 8.1.x をご利用ください。";
   }
 } 
 
@@ -398,6 +388,26 @@ if (isset($theme_zip_file)) {
         }
         closedir($handle);
       }
+
+      // 拡張アプリをインストール時 自動で HOOK_ENABLE を 1 にする
+      $configFile = $installPath."/config.server.php";
+      $config = file_get_contents($configFile);
+      $rows = explode("\n", $config);
+      $fp = fopen($configFile, "w");
+      if( $fp !== false ) {
+        foreach( $rows as $row ) {
+          if ( preg_match( '/HOOK_ENABLE/', $row ) ) {
+              $outdata = "define('HOOK_ENABLE', 1);\n";
+          } else {
+              $outdata = $row . "\n";
+          }
+          fwrite($fp, $outdata);
+        }
+      } else {
+        echo "config.server.php fopen error";
+      }
+      fclose($fp);
+      
   }
 
   dir_shori("delete", $theme_name);
@@ -494,8 +504,7 @@ if (isset($theme_zip_file)) {
 
 $theme_name_version = explode(".",$theme_zip_file);
 $theme_name = explode("_",$theme_name_version[0]);
-echo "<h2>Special Theme Install</h2>";
-
+echo "<h2>特製テーマをインストール</h2>";
 
 $check = $theme_download_url.$theme_zip_file;
 $http_header = get_headers($check);
