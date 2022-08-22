@@ -338,7 +338,7 @@ if ($theme_count > 0) {
     // --------------------------
 
     unlink($zipFile);
-    #unlink($phpName); // 自分自身を消す
+    unlink($phpName);
 
     # プログラム以外のディレクトリを削除
     if ( is_file( "./index.php" )) {
