@@ -1,251 +1,382 @@
 <?php
 
-# MYPAGE より 3.x 対応の license.php をダウンロードください。
-# https://mypage.a-blogcms.jp/
+// ----------------------
+// a-blog cms 3.0 簡単アップデート 
+// update 2022/08/22
+// ----------------------
 
-// --------------------------
-//
-// a-blog cms 2.x -> 3.x update
-//
-// --------------------------
+// アップデートバージョンを指定する場合は「$ablogcmsVersion」を指定ください。
+// 指定しない場合、最新バージョンにアップデートされます。
 
-# 今後は、このアップデートを利用することなく管理ページから可能になります。
+// バージョンを指定する際には以下の行頭の # を削除してください。
 
-# アップデートバージョンを指定する場合は「$ablogcmsVersion」を指定ください。
-# 指定しない場合、最新バージョンにアップデートされます。
+# $ablogcmsVersion = "3.0.15";
 
-#$ablogcmsVersion = "3.0.0"; # バージョンを指定する際には行頭の # を削除してください。
+// ------------------------------
 
-// --------------------------
+// これ以下は修正する必要はありません。
 
-# 利用しているテーマを指定します。
-# 複数あれば | で区切って指定してください。
-# 指定したテーマ名が入る、テーマも対象になります。（例： site2020を指定した場合、sp@site2020 や blog@site2020 も対象になります）
-# systemはアップデート対象になりますので指定しないでください。
+$ymdhis = date("YmdHis");
 
-#$useThemes = "blog2020"; # 複数の場合には | で区切って "site2020|blog2020";
+$input_pass = filter_input(INPUT_POST, "dbpass");
 
-// --------------------------
-// 二重実行防止処理
-// --------------------------
+$installPath = realpath('.');
+
+$phpName = basename($_SERVER['PHP_SELF']);
+
+$error_msg = array();
+
+if (!isset($ablogcmsVersion)) {
+    $check = download_version_check();
+  if ($check) {
+    $ablogcmsVersion = $check;
+  } else {
+    $error_msg[] = "最新版の a-blog cms のバージョンの取得に失敗しました。<br>
+    手動で update.php の中の \$ablogcmsVersion = \"3.0.0\"; を書き換え指定のバージョンを設定ください。<br>
+    また # が先頭についていると未設定という扱いになりますので # があれば削除ください。";
+  }
+}
+
+require_once($installPath.'/config.server.php');
+
+$domain = DOMAIN;
+$database_name = DB_NAME;
+$acount_name = DB_USER;
+$acount_password = DB_PASS;
+$database_host = DB_HOST;
+$database_prefix = DB_PREFIX;
+
+// PHP バージョンチェック
+
+$phpversion = phpversion();
+$versionArray = explode(".", $phpversion);
+$version = $versionArray[0].".".$versionArray[1];
+
+if ($version < 7.2) {
+  $error_msg[] = "現在のサーバーの PHP のバージョンが ".$phpversion. " では、a-blog cms Ver.".$ablogcmsVersion." を実行することができません。PHP 7.2.5 以上をご利用ください。";
+} elseif ($version > 8.1) {
+  $error_msg[] = "現在のサーバーの PHP のバージョンが ".$phpversion. " では、a-blog cms Ver.".$ablogcmsVersion." を実行することができません。PHP 8.1.x 以下をご利用ください。";
+}
+
+// 現在のバージョンをチェック
+
+$sql = "SELECT sequence_system_version FROM ".$database_prefix."sequence";
+$dbh = new PDO('mysql:host='.$database_host.';dbname='.$database_name.'', $acount_name, $acount_password);
+$stmt = $dbh->query($sql);
+foreach ($stmt as $row) {
+  $now_version = $row['sequence_system_version'];
+}
+$now_versionArray = explode(".", $now_version);
+
+$sql = "SELECT config_value FROM ".$database_prefix."config WHERE config_key = 'theme'";
+$stmt = $dbh->query($sql);
+foreach ($stmt as $row) {
+  $theme_array[] = $row['config_value'];
+}
+
+$theme_unique_array = array_unique($theme_array);
+
+$dbh = null;
 
 $lockFile = realpath('.'). "/update.lock";
 
 if (is_file($lockFile)) {
   echo "lockFile:".$lockFile;
-  exit;
-} else {
-  touch($lockFile);
-}
+  $error_msg[] = "二重に実行防止のためのファイル ".$lockFile." を発見し処理できません。";
+} 
 
-// --------------------------
-// 現在の a-blog cms のバージョンをチェック
-// --------------------------
+?><!DOCTYPE html>
+    <html lang="ja">
+    <head>
+    <meta charset="UTF-8">
+    <title>a-blog cms 簡単アップデート</title>
+    <link rel="stylesheet" href="/themes/system/css/acms-admin.min.css">
+    <style>
+      body {
+        padding : 10px 30px;
+        background-color : #ddd;
+        font-family: Courier;
+      }
+    </style>
+    </head>
+    <body>
+    <h1>a-blog cms 簡単アップデート</h1>
+<?php
 
-if (!$ablogcmsVersion) {
-  $check = download_version_check ();
-  if ($check) {
-    $ablogcmsVersion = $check;
-  } else {
-    echo "web site version check error.";
-    exit;
+if (isset($ablogcmsVersion)) {
+
+  echo "<p>現在の <strong>Ver.".$now_version."</strong> から <strong>Ver.".$ablogcmsVersion."</strong> に a-blog cms のバージョンをアップデートします。";
+
+  echo "<p>アップデート実行後に、CMS の<strong>管理者権限のユーザーID</strong> と <strong>パスワード</strong>が必要になります。<br>この処理実行後にパスワード再設定機能は利用できませんので事前に準備ください。</p>";
+
+  if ($now_versionArray[0] < 3) {
+    echo "<p><strong>アップデートするとシステムのライセンスが開発版に切り替わります。<br><a href=\"https://mypage.a-blogcms.jp/\">MYPAGE</a> から 3.0 対応版の license.php をダウンロードください。</strong></p>";
   }
 }
 
-// --------------------------
+// 現在のテーマをチェック
 
-# 実行時刻
-$ymdhis = date("YmdHis");
+echo "<h3>利用中のテーマ</h3><ul>";
 
-# ダウンロード元 URL
-$download = sprintf("http://developer.a-blogcms.jp/_package/%s/acms%s_update2x.zip",$ablogcmsVersion,$ablogcmsVersion);
-
-# ダウンロード後のZipファイル名
-$zipFile = sprintf("./acms%s_update2x.zip",$ablogcmsVersion);
-
-# 解凍後の全体フォルダ名
-$zipAfterDirName = sprintf("acms%s_update2x",$ablogcmsVersion);
-
-# 解凍後の a-blog cms のフォルダ名
-$cmsDirName = "ablogcms";
-
-$installPath = realpath('.');
-$ablogcmsDir = $installPath."/".$zipAfterDirName."/".$cmsDirName;
-$phpName = basename($_SERVER['PHP_SELF']);
-
-// --------------------------
-// バージョンチェック
-// --------------------------
-
-$versionArray = explode(".", phpversion());
-$version = $versionArray[0].".".$versionArray[1];
-
-if ($version < 7.2) {
-  echo "Installation error. Please use PHP 7.2 or higher.";
-  exit;
-} 
-
-// --------------------------
-// a-blog cms ファイルをダウンロード
-// --------------------------
-
-$fp = fopen($download, "r");
-if ($fp !== FALSE) {
-    file_put_contents($zipFile, "");
-    while(!feof($fp)) {
-        $buffer = fread($fp, 4096);
-        if ($buffer !== FALSE) {
-            file_put_contents($zipFile, $buffer, FILE_APPEND);
-        }
-    }
-    fclose($fp);
-} else {
-    echo 'a-blog cms download Error ! : '.$download;
-    exit;
+foreach ($theme_unique_array as $theme_name) {
+  echo "<li>".$theme_name."</li>";
 }
 
-// --------------------------
-// a-blog cms ファイルを解凍
-// --------------------------
+?></ul>
 
-$zip = new ZipArchive();
-$res = $zip->open($zipFile);
+<h3>利用していないテーマ</h3>
+<ul>
+<?php
 
-if($res === true){
-    $zip->extractTo($installPath);
-    $zip->close();
-
-} else {
-    echo 'a-blog cms unZip Error ! : '. $zipFile;
-    exit;
-}
-
-// --------------------------
-// バックアップ
-// --------------------------
-
-$backupDir = "backup_". $ymdhis;
-
-# バックアップディレクトリを作成
-mkdir($backupDir);
-
-# ファイルを移動
-if (is_file("./acms.js")) rename("./acms.js", $backupDir."/acms.js");
-if (is_file("./index.js")) rename("./index.js", $backupDir."/index.js");
-if (is_file("./500.html")) rename("./500.html", $backupDir."/500.html");
-
-rename("./index.php", $backupDir."/index.php");
-
-rename ("./license.php", $backupDir."/license.php");
-
-# ディレクトリを移動
-
-dir_shori("move", "./js", $backupDir."/js");
-dir_shori("move", "./lang", $backupDir."/lang");
-dir_shori("move", "./php", $backupDir."/php");
-dir_shori("move", "./private", $backupDir."/private");
-dir_shori("move", "./themes", $backupDir."/themes");
-
-if (is_dir("./extension")) dir_shori("move", "./extension", $backupDir."/extension");
-#if (is_dir("./cache")) dir_shori("move", "./cache", $backupDir."/cache");
-dir_shori ("delete", "cache");
-
-// --------------------------
-// update版 ファイル＆ディレクトリを移動
-// --------------------------
-
-dir_shori("move", $ablogcmsDir, $installPath);
-
-# 3.0対応 ライセンスファイル に上書き（ライセンス切れになります）
-rename ($installPath."/".$zipAfterDirName."/omake/license.php", "./license.php");
-
-// --------------------------
-// カスタマイズ部分を戻す
-// --------------------------
-
-# themes を戻す
-if (isset($useThemes)) {
-if ($handle = opendir($backupDir."/themes")) {
+$theme_count = 0;
+if ($handle = opendir($installPath."/themes")) {
   while(false !== ($theme = readdir($handle))) {
     if ($theme != "." && $theme != "..") {
-      if (preg_match("/".$useThemes."/", $theme)) {
-        if (is_dir("./themes/".$theme)) {
-          rename ("./themes/".$theme, "./themes/".$theme."_".$ablogcmsVersion);
-        }
-        dir_shori ("copy", $backupDir."/themes/".$theme, "./themes/".$theme);
+      if (is_file($theme)) {
+        # 
+      } elseif (in_array($theme,$theme_unique_array)) {
+        # 
+      } elseif ($theme == "system") {
+        #
+      } else {
+          echo "<li>".$theme."</li>";
+          $theme_count++;
       }
     }
   }
   closedir($handle);
 }
+
+echo "</ul>";
+
+if ($theme_count > 0) {
+  echo "<p style=\"color: gray;\">※ 利用していないテーマについては、アップデート時には themes から削除され、バックアップデータ側に保存されます。</p>";
 }
 
-# /php/ACMS/User を戻す
-rename ("./php/ACMS/User","./php/ACMS/User_".$ablogcmsVersion);
-dir_shori ("copy", $backupDir."/php/ACMS/User", "./php/ACMS/User");
+// エラー表示
 
-# php/AAPP を戻す
-rename ("./php/AAPP", "./php/AAPP_".$ablogcmsVersion);
-dir_shori ("copy", $backupDir."/php/AAPP", "./php/AAPP");
+  if (count($error_msg)) {
+    echo "<h3>エラー</h3>";
+    foreach ($error_msg as $text) {
+      echo "<p class='acms-admin-text-error'>".$text."</p>";
+    }
+    $exec_stop = true;
+  } else {
+    $exec_stop = false;
+  }
 
-# /private/config.system.yaml を戻す
-rename ("./private/config.system.yaml", "./private/config.system_".$ablogcmsVersion.".yaml");
-copy ($backupDir."/private/config.system.yaml", "./private/config.system.yaml");
+  if ($input_pass != DB_PASS) {
 
-# /extension を戻す
-if (is_dir($backupDir."/extension")) {
-  rename ("./extension","./extension_".$ablogcmsVersion);
-  dir_shori ("copy", $backupDir."/extension", "./extension");
-}
+    if ($exec_stop != true) {
+?>
+    <form action="" method="POST" class="acms-admin-form">
+      <input type="password" name="dbpass" id="dbpass" class="acms-admin-form-width-mini" placeholder="MySQL password">
+      <input type="submit" class="acms-admin-btn" value="アップデート実行">
+    </form>
+    <p>処理を実行してよろしければ、データベースのパスワードを入力してください。</p>
+    
+<?php
 
-// --------------------------
-// .htaccess の設定
-// --------------------------
+    }
+    
+    if (isset($input_pass) && $input_pass != DB_PASS) {
+      echo "<p class='acms-admin-text-error'>パスワードが間違っています。</p>";
+    } 
 
-rename("./htaccess.txt", './htaccess_'.$ablogcmsVersion.'.txt');
+    echo "</body></html>";
+    exit;
 
-rename("./private/htaccess.txt", './private/.htaccess');
-rename("./themes/htaccess.txt", './themes/.htaccess');
-rename("./cache/htaccess.txt", './cache/.htaccess');
-rename("./editorconfig.txt", './.editorconfig');
-rename("./env.txt", './.env');
-rename("./gitignore.txt", './.gitignore');
+  } else {
 
-// --------------------------
-// php.ini があった時の処理
-// --------------------------
+    // アップデート処理
 
-if ( is_file( "./php.ini" )) {
-    copy("./php.ini", "./setup/php.ini");
-}
+    touch($lockFile);
 
-// --------------------------
-// ファイルの削除
-// --------------------------
+    # ダウンロード元 URL
+    $download = sprintf("http://developer.a-blogcms.jp/_package/%s/acms%s_update2x.zip",$ablogcmsVersion,$ablogcmsVersion);
 
-unlink($zipFile);
-unlink($phpName);
+    # ダウンロード後のZipファイル名
+    $zipFile = sprintf("./acms%s_update2x.zip",$ablogcmsVersion);
 
-# プログラム以外のディレクトリを削除
-if ( is_file( "./index.php" )) {
-  dir_shori("delete", $zipAfterDirName);
-} else {
-  echo "update error!";
-  exit;
-}
+    # 解凍後の全体フォルダ名
+    $zipAfterDirName = sprintf("acms%s_update2x",$ablogcmsVersion);
 
-unlink($lockFile);
+    # 解凍後の a-blog cms のフォルダ名
+    $cmsDirName = "ablogcms";
 
-// --------------------------
-// インストーラーに飛ぶ
-// --------------------------
+    $ablogcmsDir = $installPath."/".$zipAfterDirName."/".$cmsDirName;
 
-$jump = str_replace($phpName, "", $_SERVER['SCRIPT_NAME']);
-header("Location: " . $jump);
+    // --------------------------
+    // a-blog cms ファイルをダウンロード
+    // --------------------------
 
-// --------------------------
+    $fp = fopen($download, "r");
+    if ($fp !== FALSE) {
+        file_put_contents($zipFile, "");
+        while(!feof($fp)) {
+            $buffer = fread($fp, 4096);
+            if ($buffer !== FALSE) {
+                file_put_contents($zipFile, $buffer, FILE_APPEND);
+            }
+        }
+        fclose($fp);
+    } else {
+        echo "<p class='acms-admin-text-error'>a-blog cms ダウンロードエラー</p>";
+        echo "</body></html>";
+        unlink($lockFile);
+        exit;
+    }
+
+    // --------------------------
+    // a-blog cms ファイルを解凍
+    // --------------------------
+
+    $zip = new ZipArchive();
+    $res = $zip->open($zipFile);
+
+    if($res === true){
+        $zip->extractTo($installPath);
+        $zip->close();
+
+    } else {
+        echo "<p class='acms-admin-text-error'>a-blog cms 解凍エラー : ".$zipFile."</p>";
+        echo "</body></html>";
+        unlink($lockFile);
+        exit;
+    }
+
+    // --------------------------
+    // バックアップ
+    // --------------------------
+
+    $backupDir = "backup_". $ymdhis;
+
+    # バックアップディレクトリを作成
+    mkdir($backupDir);
+
+    # ファイルを移動
+    if (is_file("./acms.js")) rename("./acms.js", $backupDir."/acms.js");
+    if (is_file("./index.js")) rename("./index.js", $backupDir."/index.js");
+    if (is_file("./500.html")) rename("./500.html", $backupDir."/500.html");
+
+    rename("./index.php", $backupDir."/index.php");
+
+    rename ("./license.php", $backupDir."/license.php");
+
+    # ディレクトリを移動
+
+    dir_shori("move", "./js", $backupDir."/js");
+    dir_shori("move", "./lang", $backupDir."/lang");
+    dir_shori("move", "./php", $backupDir."/php");
+    dir_shori("move", "./private", $backupDir."/private");
+    dir_shori("move", "./themes", $backupDir."/themes");
+
+    if (is_dir("./extension")) dir_shori("move", "./extension", $backupDir."/extension");
+    #if (is_dir("./cache")) dir_shori("move", "./cache", $backupDir."/cache");
+    dir_shori ("delete", "cache");
+
+    // --------------------------
+    // update版 ファイル＆ディレクトリを移動
+    // --------------------------
+
+    dir_shori("move", $ablogcmsDir, $installPath);
+
+    # 3.0 以前場合にはライセンスファイルが開発ライセンスになります。
+    if ($now_versionArray[0] < 3) {
+      rename ($installPath."/".$zipAfterDirName."/omake/license.php", "./license.php");
+    }
+    // --------------------------
+    // カスタマイズ部分を戻す
+    // --------------------------
+
+    # 利用しているテーマを戻す
+    foreach ($theme_unique_array as $theme_name) {
+      dir_shori ("copy", $backupDir."/themes/".$theme_name, "./themes/".$theme_name);
+    }
+
+    # /php/ACMS/User を戻す
+    rename ("./php/ACMS/User","./php/ACMS/User_".$ablogcmsVersion);
+    dir_shori ("copy", $backupDir."/php/ACMS/User", "./php/ACMS/User");
+
+    # php/AAPP を戻す
+    rename ("./php/AAPP", "./php/AAPP_".$ablogcmsVersion);
+    dir_shori ("copy", $backupDir."/php/AAPP", "./php/AAPP");
+
+    # /private/config.system.yaml を戻す
+    rename ("./private/config.system.yaml", "./private/config.system_".$ablogcmsVersion.".yaml");
+    copy ($backupDir."/private/config.system.yaml", "./private/config.system.yaml");
+
+    # /extension を戻す
+    if (is_dir($backupDir."/extension")) {
+      rename ("./extension","./extension_".$ablogcmsVersion);
+      dir_shori ("copy", $backupDir."/extension", "./extension");
+    }
+
+    // --------------------------
+    // .htaccess の設定
+    // --------------------------
+
+    rename("./htaccess.txt", './htaccess_'.$ablogcmsVersion.'.txt');
+
+    rename("./private/htaccess.txt", './private/.htaccess');
+    rename("./themes/htaccess.txt", './themes/.htaccess');
+    rename("./cache/htaccess.txt", './cache/.htaccess');
+    rename("./editorconfig.txt", './.editorconfig');
+    rename("./env.txt", './.env');
+    rename("./gitignore.txt", './.gitignore');
+
+    // --------------------------
+    // php.ini があった時の処理
+    // --------------------------
+
+    if ( is_file( "./php.ini" )) {
+        copy("./php.ini", "./setup/php.ini");
+    }
+
+    // --------------------------
+    // ファイルの削除
+    // --------------------------
+
+    unlink($zipFile);
+    #unlink($phpName); // 自分自身を消す
+
+    # プログラム以外のディレクトリを削除
+    if ( is_file( "./index.php" )) {
+      dir_shori("delete", $zipAfterDirName);
+    } else {
+      echo "<p class='acms-admin-text-error'>正常にアップデートができませんでした。</p>";
+      echo "</body></html>";
+      unlink($lockFile);
+      exit;
+    }
+?>
+
+<p><strong>アップデート処理の実行を完了しました。</strong></p>
+
+<h3>残作業</h3>
+<ol>
+  <li>メンテナンスツールでデータベースのアップデート</li>
+  <?php
+    if ($now_versionArray[0] < 3) {
+      echo "<li>license.php ファイルのアップデート (<a href=\"https://mypage.a-blogcms.jp/\">MYPAGE</a>)</li>";
+    }
+  ?>
+  <li>setup ディレクトリーの削除、またはリネーム</li>
+</ol>
+
+<a href="./setup/index.php" class="acms-admin-btn acms-admin-btn-large">メンテナンスツールへ</a>
+
+</body></html>
+<?php
+
+    unlink($lockFile);
+  }
+
+exit;
+
+// --------------------------------------------------
 // ディレクトリを操作 function ( move / copy / delete )
-// --------------------------
+// --------------------------------------------------
 
 function dir_shori ($shori, $nowDir , $newDir="") {
 
@@ -287,18 +418,19 @@ function dir_shori ($shori, $nowDir , $newDir="") {
   return true;
 }
 
-function download_version_check () {
+function download_version_check()
+{
+  $options['ssl']['verify_peer'] = false;
+  $options['ssl']['verify_peer_name'] = false;
+  $html = file_get_contents('https://developer.a-blogcms.jp/download/', false, stream_context_create($options));
+  preg_match('/<h1 class="entry-title" id="(.*)"><a href="https:\/\/developer.a-blogcms.jp\/download\/package\/3.0.(.*).html">(.*)<\/a><\/h1>/', $html, $matches);
 
-  // Version 3.0.x のチェック用
-  // 正常にチェックできない場合には 空 でかえす。
-
-  $options['ssl']['verify_peer']=false;
-  $options['ssl']['verify_peer_name']=false;
-  $html=file_get_contents('https://developer.a-blogcms.jp/download/', false, stream_context_create($options));
-  preg_match('/<h1 class="entry-title" id="(.*)"><a href="https:\/\/developer.a-blogcms.jp\/download\/package\/3.0.(.*).html">(.*)<\/a><\/h1>/',$html,$matches);
-
-  if (is_numeric($matches[2])) {
-    return "3.0.".$matches[2];
+  if (count($matches) ){
+    if (is_numeric($matches[2])) {
+      return "3.0." . $matches[2];
+    } else {
+      return;
+    }
   } else {
     return;
   }
