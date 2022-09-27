@@ -299,6 +299,7 @@ rename($installPath . "/archives/htaccess.txt", $installPath . '/archives/.htacc
 rename($installPath . "/archives_rev/htaccess.txt", $installPath . '/archives_rev/.htaccess');
 rename($installPath . "/media/htaccess.txt", $installPath . '/media/.htaccess');
 rename($installPath . "/private/htaccess.txt", $installPath . '/private/.htaccess');
+rename($installPath . "/cache/htaccess.txt", $installPath . '/cache/.htaccess');
 rename($installPath . "/themes/htaccess.txt", $installPath . '/themes/.htaccess');
 
 // --------------------------
