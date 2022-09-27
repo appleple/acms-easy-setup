@@ -41,7 +41,7 @@ $cpi_php_version = "8.0";
 // UTSUWA GitHub版
 // --------------------------
 
-$github_utsuwa = "https://github.com/appleple/acms-utsuwa/archive/refs/heads/main.zip";
+# $github_utsuwa = "https://github.com/appleple/acms-utsuwa/archive/refs/heads/main.zip";
 
 // --------------------------
 // 特製テーマ設定
