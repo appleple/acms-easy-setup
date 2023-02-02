@@ -38,6 +38,12 @@ $dbPass     = '';
 $cpi_php_version = "8.0";
 
 // --------------------------
+// UTSUWA GitHub版
+// --------------------------
+
+# $github_utsuwa = "https://github.com/appleple/acms-utsuwa/archive/refs/heads/main.zip";
+
+// --------------------------
 // 特製テーマ設定
 // --------------------------
 
@@ -299,6 +305,7 @@ rename($installPath . "/archives/htaccess.txt", $installPath . '/archives/.htacc
 rename($installPath . "/archives_rev/htaccess.txt", $installPath . '/archives_rev/.htaccess');
 rename($installPath . "/media/htaccess.txt", $installPath . '/media/.htaccess');
 rename($installPath . "/private/htaccess.txt", $installPath . '/private/.htaccess');
+rename($installPath . "/cache/htaccess.txt", $installPath . '/cache/.htaccess');
 rename($installPath . "/themes/htaccess.txt", $installPath . '/themes/.htaccess');
 
 // --------------------------
@@ -321,8 +328,6 @@ file_put_contents($db_default, $data);
 
 unlink($zipFile);
 unlink($phpName);
-
-
 
 # index.html があった時にリネームしておく
 if (is_file("./index.html")) {
@@ -462,6 +467,49 @@ if (isset($plugins_zip_file)) {
 }
 
 // --------------------------
+// GitHub版 utsuwa インポート
+// --------------------------
+
+if (isset($github_utsuwa)) {
+
+  $github_utsuwa_zip ="acms-utsuwa-main.zip";
+
+  $fp = fopen($github_utsuwa, "r");
+  if ($fp !== FALSE) {
+    file_put_contents($github_utsuwa_zip, "");
+    while (!feof($fp)) {
+      $buffer = fread($fp, 4096);
+      if ($buffer !== FALSE) {
+        file_put_contents($github_utsuwa_zip, $buffer, FILE_APPEND);
+      }
+    }
+    fclose($fp);
+  } else {
+    echo 'github utsuwa download Error ! : ' . $download;
+    exit;
+  }
+
+  $zip = new ZipArchive();
+  $res = $zip->open($github_utsuwa_zip);
+
+  if ($res === true) {
+    $zip->extractTo($installPath);
+    $zip->close();
+  } else {
+    echo 'github utsuwa unZip Error ! : ' . $github_utsuwa_zip;
+    exit;
+  }
+
+  dir_shori("delete", $installPath."/setup/bin/utsuwa");
+  dir_shori("move", $installPath."/acms-utsuwa-main/_bin/utsuwa",$installPath."/setup/bin/utsuwa");
+  dir_shori("delete", $installPath."/acms-utsuwa-main/_bin");
+  dir_shori("delete", $installPath."/themes/utsuwa");
+  dir_shori("move", $installPath."/acms-utsuwa-main",$installPath."/themes/utsuwa");
+
+  unlink($github_utsuwa_zip);
+} 
+
+// --------------------------
 // インストーラーに飛ぶ
 // --------------------------
 
@@ -502,20 +550,39 @@ if (isset($plugins_zip_file)) {
 
 if (isset($theme_zip_file)) {
 
-$theme_name_version = explode(".",$theme_zip_file);
-$theme_name = explode("_",$theme_name_version[0]);
-echo "<h2>特製テーマをインストール</h2>";
+  $theme_name_version = explode(".",$theme_zip_file);
+  $theme_name = explode("_",$theme_name_version[0]);
+  echo "<h2>特製テーマをインストール</h2>";
 
-$check = $theme_download_url.$theme_zip_file;
-$http_header = get_headers($check);
-$httt_hedaer0_code = explode(" ",$http_header[0]);
-if ( $httt_hedaer0_code[1] != "200" ) {
-  $error_msg[] = "特製テーマ「".$theme_name[0]."」のダウンロード先の情報が間違っています。";
-  echo "<ul><li><del>".$theme_name[0]."</del></li></ul>";
-} else {
-  echo "<ul><li>".$theme_name[0]."</li></ul>";
+  $check = $theme_download_url.$theme_zip_file;
+  $http_header = get_headers($check);
+  $httt_hedaer0_code = explode(" ",$http_header[0]);
+  if ( $httt_hedaer0_code[1] != "200" ) {
+    $error_msg[] = "特製テーマ「".$theme_name[0]."」のダウンロード先の情報が間違っています。";
+    echo "<ul><li><del>".$theme_name[0]."</del></li></ul>";
+  } else {
+    echo "<ul><li>".$theme_name[0]."</li></ul>";
+  }
 }
+
+if (isset($github_utsuwa)) {
+
+  $html = file_get_contents('https://github.com/appleple/acms-utsuwa');
+  $pattern_ver = '@<span class="css-truncate css-truncate-target text-bold mr-2" style="max-width: none;">(.*?)</span>@';
+  if( preg_match_all($pattern_ver, $html, $result) ){
+      $utsuwa_version = $result[0][0];
+  }
+
+  $pattern_date = '@<relative-time datetime="(.*?)" class="no-wrap">(.*?)</relative-time>@';
+  if( preg_match_all($pattern_date, $html, $result) ){
+    $utsuwa_update = $result[2][0];
+  }
+
+
+  echo "<h2>GitHub版 UTSUWA インポート</h2>";
+  echo "<ul><li>utsuwa ".$utsuwa_version." / ".$utsuwa_update."</li></ul>";
 }
+
 
 if (isset($plugins_zip_file)) {
 
