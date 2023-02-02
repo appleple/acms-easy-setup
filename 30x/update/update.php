@@ -46,6 +46,11 @@ $acount_password = DB_PASS;
 $database_host = DB_HOST;
 $database_prefix = DB_PREFIX;
 
+$port_check = explode( ":", $database_host );
+if ( count( $port_check ) == 2 ) {
+  $database_host = $database_host.";port=".$port_check[1];
+} 
+
 // PHP バージョンチェック
 
 $phpversion = phpversion();
