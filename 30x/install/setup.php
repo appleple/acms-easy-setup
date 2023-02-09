@@ -82,6 +82,9 @@ $cpi_check = "";
 if (is_array($cpi_check_array) && count($cpi_check_array) > 1) {
   $cpi_check = $cpi_check_array[1];
 }
+if (strpos($_SERVER['HTTP_HOST'],'smartrelease') !== false) {
+	$cpi_check = "secure";
+}
 
 if ($cpi_check == "secure") {
   if ($cpi_php_version) {
