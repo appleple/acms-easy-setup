@@ -379,7 +379,7 @@ if (isset($theme_zip_file)) {
   }
 
   dir_shori("move", $theme_path . "/bin/" . $theme_name, $installPath . "/setup/bin/" . $theme_name);
-  dir_shori("move", $theme_path . "/themes/" . $theme_name, $installPath . "/themes/" . $theme_name);
+  dir_shori("move", $theme_path . "/themes/" , $installPath . "/themes/" );
 
   rename( $theme_path . "/tpl/install.html", $installPath . "/setup/tpl/install.html");
   rename( $theme_path . "/img/" . $theme_name . ".jpg", $installPath . "/setup/img/" . $theme_name . ".jpg");
