@@ -1,8 +1,8 @@
 <?php
 
 // ----------------------
-// a-blog cms 3.0 簡単アップデート 
-// update 2022/08/22
+// a-blog cms 3.x 簡単アップデート 
+// update 2023/09/13
 // ----------------------
 
 // アップデートバージョンを指定する場合は「$ablogcmsVersion」を指定ください。
@@ -10,7 +10,7 @@
 
 // バージョンを指定する際には以下の行頭の # を削除してください。
 
-# $ablogcmsVersion = "3.0.15";
+$ablogcmsVersion = "3.1.0";
 
 // ------------------------------
 
@@ -80,6 +80,22 @@ foreach ($stmt as $row) {
 }
 
 $theme_unique_array = array_unique($theme_array);
+
+$parent_theme_array = [];
+foreach ($theme_unique_array as $theme_name) {
+  $out_theme = [];
+  $check_theme = explode('@', $theme_name);
+  foreach ($check_theme as $data){
+    array_shift($check_theme);
+    $out_theme[] = implode('@', $check_theme);
+  } 
+  $parent_theme_array = array_merge($parent_theme_array, $out_theme);
+}
+$theme_unique_array = array_merge($theme_unique_array, $parent_theme_array);
+$theme_unique_array = array_filter($theme_unique_array);
+$theme_unique_array = array_unique($theme_unique_array);
+$theme_unique_array = array_values($theme_unique_array);
+
 
 $dbh = null;
 
