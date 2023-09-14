@@ -2,7 +2,7 @@
 
 // ----------------------
 // a-blog cms 3.x 簡単アップデート 
-// update 2023/09/13
+// update 2023/09/14
 // ----------------------
 
 // アップデートバージョンを指定する場合は「$ablogcmsVersion」を指定ください。
@@ -32,7 +32,7 @@ if (!isset($ablogcmsVersion)) {
     $ablogcmsVersion = $check;
   } else {
     $error_msg[] = "最新版の a-blog cms のバージョンの取得に失敗しました。<br>
-    手動で update.php の中の \$ablogcmsVersion = \"3.0.0\"; を書き換え指定のバージョンを設定ください。<br>
+    手動で update.php の中の \$ablogcmsVersion = \"3.1.0\"; を書き換え指定のバージョンを設定ください。<br>
     また # が先頭についていると未設定という扱いになりますので # があれば削除ください。";
   }
 }
@@ -214,13 +214,13 @@ if ($theme_count > 0) {
     touch($lockFile);
 
     # ダウンロード元 URL
-    $download = sprintf("http://developer.a-blogcms.jp/_package/%s/acms%s_update2x.zip",$ablogcmsVersion,$ablogcmsVersion);
+    $download = sprintf("http://developer.a-blogcms.jp/_package/%s/acms%s_update%sx.zip",$ablogcmsVersion,$ablogcmsVersion,$now_versionArray[0]);
 
     # ダウンロード後のZipファイル名
-    $zipFile = sprintf("./acms%s_update2x.zip",$ablogcmsVersion);
+    $zipFile = sprintf("./acms%s_update%sx.zip",$ablogcmsVersion,$now_versionArray[0]);
 
     # 解凍後の全体フォルダ名
-    $zipAfterDirName = sprintf("acms%s_update2x",$ablogcmsVersion);
+    $zipAfterDirName = sprintf("acms%s_update%sx",$ablogcmsVersion,$now_versionArray[0]);
 
     # 解凍後の a-blog cms のフォルダ名
     $cmsDirName = "ablogcms";
@@ -282,8 +282,9 @@ if ($theme_count > 0) {
 
     rename("./index.php", $backupDir."/index.php");
 
-    rename ("./license.php", $backupDir."/license.php");
-
+    if ($now_versionArray[0] < 3) {
+      rename ("./license.php", $backupDir."/license.php");
+    }
     # ディレクトリを移動
 
     dir_shori("move", "./js", $backupDir."/js");
@@ -293,8 +294,12 @@ if ($theme_count > 0) {
     dir_shori("move", "./themes", $backupDir."/themes");
 
     if (is_dir("./extension")) dir_shori("move", "./extension", $backupDir."/extension");
-    #if (is_dir("./cache")) dir_shori("move", "./cache", $backupDir."/cache");
-    dir_shori ("delete", "cache");
+
+    if (is_file("./cache/.htaccess")) {
+            mkdir($backupDir."/cache");
+            rename("./cache/.htaccess", $backupDir."/cache/.htaccess");
+    }
+    if (is_dir("./cache")) dir_shori ("delete", "cache");
 
     // --------------------------
     // update版 ファイル＆ディレクトリを移動
@@ -340,11 +345,19 @@ if ($theme_count > 0) {
     rename("./htaccess.txt", './htaccess_'.$ablogcmsVersion.'.txt');
 
     rename("./private/htaccess.txt", './private/.htaccess');
-    rename("./themes/htaccess.txt", './themes/.htaccess');
-    rename("./cache/htaccess.txt", './cache/.htaccess');
+    rename("./themes/htaccess.txt", './themes/.htaccess');   
     rename("./editorconfig.txt", './.editorconfig');
     rename("./env.txt", './.env');
     rename("./gitignore.txt", './.gitignore');
+
+    if (!is_dir("./cache")) {
+      mkdir("./cache");
+        if (is_file($backupDir."/cache/.htaccess")) {
+          rename($backupDir."/cache/.htaccess", "./cache/.htaccess");
+        }
+    } elseif (is_file("./cache/htaccess.txt")) {
+      rename("./cache/htaccess.txt", './cache/.htaccess');
+    }
 
     // --------------------------
     // php.ini があった時の処理
