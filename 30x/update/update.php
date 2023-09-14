@@ -10,7 +10,7 @@
 
 // バージョンを指定する際には以下の行頭の # を削除してください。
 
-$ablogcmsVersion = "3.1.0";
+# $ablogcmsVersion = "3.1.0";
 
 // ------------------------------
 
@@ -457,11 +457,11 @@ function download_version_check()
   $options['ssl']['verify_peer'] = false;
   $options['ssl']['verify_peer_name'] = false;
   $html = file_get_contents('https://developer.a-blogcms.jp/download/', false, stream_context_create($options));
-  preg_match('/<h1 class="entry-title" id="(.*)"><a href="https:\/\/developer.a-blogcms.jp\/download\/package\/3.0.(.*).html">(.*)<\/a><\/h1>/', $html, $matches);
+  preg_match('/<h1 class="entry-title" id="(.*)"><a href="https:\/\/developer.a-blogcms.jp\/download\/package\/3.1.(.*).html">(.*)<\/a><\/h1>/', $html, $matches);
 
   if (count($matches) ){
     if (is_numeric($matches[2])) {
-      return "3.0." . $matches[2];
+      return "3.1." . $matches[2];
     } else {
       return;
     }
