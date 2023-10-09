@@ -2,7 +2,7 @@
 
 // ------------------------------
 // a-blog cms 3.x 簡単セットアップ
-//       last update 2023/09/14
+//       last update 2023/10/07
 // ------------------------------
 
 # $ablogcmsVersion = '3.1.0';
@@ -47,9 +47,7 @@ $cpi_php_version = "8.0";
 // 特製テーマ設定
 // --------------------------
 
-$theme_download_url = "http://www.a-blogcms.jp/_download/";
-
-# $theme_zip_file = "square.zip";
+# $theme_zip_file = "square@ec.zip";
 # $theme_zip_file = "smartblock@blog.zip";
 
 // --------------------------
@@ -57,7 +55,7 @@ $theme_download_url = "http://www.a-blogcms.jp/_download/";
 // --------------------------
 
 # $plugins_zip_file = "ShoppingCart_100.zip";
-# $plugins_download_url = "http://www.a-blogcms.jp/_download/";
+
 
 // --------------------------
 
@@ -96,6 +94,9 @@ if ($cpi_check == "secure") {
 
 $phpName = basename($_SERVER['PHP_SELF']);
 
+$theme_download_url = "http://www.a-blogcms.jp/_download/";
+$plugins_download_url = "http://www.a-blogcms.jp/_download/";
+
 // --------------------------
 // 動作チェック
 // --------------------------
@@ -133,7 +134,6 @@ $http_host = explode(":", $_SERVER['HTTP_HOST']);
 if (is_file($installPath."/".$zipFile) || is_file($installPath."/".$zipFile)) {
   $_POST['action'] = "";
 }
-
 
 ?>
 <!DOCTYPE html>
@@ -193,8 +193,6 @@ $cmsDirName = "ablogcms";
 
 $ablogcmsDir = $installPath . "/" . $zipAfterDirName . "/" . $cmsDirName . "/";
 
-
-
 $mdHi = date("mdHi");
 
 // --------------------------
@@ -209,8 +207,8 @@ if ($http_host[0] == 'localhost') {
   $dbUser     = 'root';
   $dbPass     = '';
 
-  $mamp_check = explode("/", $installPath);
-  if ($mamp_check[2] == 'MAMP') {
+  $mamp_check = get_cfg_var('cfg_file_path');
+  if (strpos($mamp_check, 'MAMP') !== false) {
     $dbPass     = 'root';
   }
 }
