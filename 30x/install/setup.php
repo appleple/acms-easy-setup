@@ -1,8 +1,10 @@
 <?php
 
+ini_set('max_execution_time', 0);
+
 // ------------------------------
 // a-blog cms 3.x 簡単セットアップ
-//       last update 2023/10/07
+//       last update 2023/10/29
 // ------------------------------
 
 # $ablogcmsVersion = '3.1.0';
