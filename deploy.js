@@ -52,28 +52,15 @@ const zipPromise = (src, dist) => {
 }
 
 function *zipPromiseVersion (version) {
-  yield zipPromise(`${version}/cpi`, `./build/${version}/cpi.zip`);
-  yield zipPromise(`${version}/heteml`, `./build/${version}/heteml.zip`);
-  yield zipPromise(`${version}/lolipop`, `./build/${version}/lolipop.zip`);
-  yield zipPromise(`${version}/mamp`, `./build/${version}/mamp.zip`);
-  yield zipPromise(`${version}/sakura`, `./build/${version}/sakura.zip`);
-  yield zipPromise(`${version}/xampp`, `./build/${version}/xampp.zip`);
-  yield zipPromise(`${version}/xserver`, `./build/${version}/xserver.zip`);
-  yield zipPromise(`${version}/zenlogic`, `./build/${version}/zenlogic.zip`);
+  yield zipPromise(`${version}/install`, `./build/${version}/install.zip`);
   yield zipPromise(`${version}/update`, `./build/${version}/update.zip`);
 }
 
 co(function* () {
   try {
     fs.mkdirsSync(`build`);
-    fs.mkdirsSync(`build/28x`);
-    fs.mkdirsSync(`build/29x`);
-    fs.mkdirsSync(`build/210x`);
-    fs.mkdirsSync(`build/211x`);
-    yield zipPromiseVersion('28x');
-    yield zipPromiseVersion('29x');
-    yield zipPromiseVersion('210x');
-    yield zipPromiseVersion('211x');
+    fs.mkdirsSync(`build/30x`);
+    yield zipPromiseVersion('30x');
     yield systemCmd('git add -A');
     yield systemCmd(`git commit -m "v${pkg.version}"`);
     yield systemCmd('git push');
