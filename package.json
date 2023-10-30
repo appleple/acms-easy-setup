@@ -1,6 +1,6 @@
 {
   "name": "acms-easy-setup",
-  "version": "2.0.10",
+  "version": "2.0.11",
   "description": "より簡単に、ご利用の環境に合わせて a-blog cms をアップデートできるパッケージです。",
   "main": "deploy.js",
   "scripts": {
