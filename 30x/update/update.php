@@ -1,5 +1,7 @@
 <?php
 
+ini_set('max_execution_time', 0);
+
 // ----------------------
 // a-blog cms 3.x 簡単アップデート 
 // update 2023/09/14
