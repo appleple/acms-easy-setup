@@ -4,7 +4,7 @@ ini_set('max_execution_time', 0);
 
 // ------------------------------
 // a-blog cms 3.1.x 簡単セットアップ
-//       last update 2024/04/03
+//       last update 2024/05/17
 // ------------------------------
 
 # $ablogcmsVersion = '3.1.0';
@@ -35,9 +35,10 @@ $dbPass     = '';
 # ACE01 2011 利用できません
 # ACE01 2015 PHP 7.2 / 7.4
 # ACE01 2018 PHP 7.2 / 7.3 / 7.4 / 8.0
-# SV-Baisc   PHP 7.2 / 7.3 / 7.4 / 8.0
+# SV-Basic   PHP 7.2 / 7.3 / 7.4 / 8.0 / 8.1
+# ビジネス スタンダード PHP 7.4 / 8.0 / 8.1
 
-$cpi_php_version = "7.4";
+$cpi_php_version = "8.1";
 
 // --------------------------
 // UTSUWA GitHub版
@@ -49,8 +50,13 @@ $cpi_php_version = "7.4";
 // 特製テーマ設定
 // --------------------------
 
-# $theme_zip_file = "square@ec.zip";
-# $theme_zip_file = "smartblock@blog.zip";
+# $theme_zip_file = "square@ec.zip"; # カード決済対応 ECテーマ
+
+# $theme_zip_file = "site.zip";      # 子ブログ利用 siteテーマ
+# $theme_zip_file = "htmx@site.zip"; # htmx利用 siteテーマ
+
+# $theme_zip_file = "htmx@blog.zip"; # htmx利用 blogテーマ
+# $theme_zip_file = "smartblock@blog.zip"; # smartblock利用 blogテーマ
 
 // --------------------------
 // 拡張アプリ設定
@@ -418,7 +424,7 @@ if (isset($theme_zip_file)) {
     exit;
   }
 
-  dir_shori("move", $theme_path . "/bin/" . $theme_name, $installPath . "/setup/bin/" . $theme_name);
+  dir_shori("move", $theme_path . "/bin/" , $installPath . "/setup/bin/" );
   dir_shori("move", $theme_path . "/themes/" , $installPath . "/themes/" );
 
   rename( $theme_path . "/tpl/install.html", $installPath . "/setup/tpl/install.html");
@@ -697,6 +703,9 @@ function dir_shori($shori, $nowDir, $newDir = "")
               copy($nowDir . "/" . $file, $newDir . "/" . $file);
             }
           } elseif ($shori == "move") {
+            if (is_dir($newDir . "/" . $file)) {
+              dir_shori("delete", $newDir . "/" . $file, "");
+            }
             rename($nowDir . "/" . $file, $newDir . "/" . $file);
           } elseif ($shori == "delete") {
             if (filetype($nowDir . "/" . $file) == "dir") {
