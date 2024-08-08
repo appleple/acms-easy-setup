@@ -351,11 +351,13 @@ rename($installPath . "/env.txt", $installPath . '/.env');
 rename($installPath . "/gitignore.txt", $installPath . '/.gitignore');
 
 rename($installPath . "/archives/htaccess.txt", $installPath . '/archives/.htaccess');
-rename($installPath . "/archives_rev/htaccess.txt", $installPath . '/archives_rev/.htaccess');
 rename($installPath . "/media/htaccess.txt", $installPath . '/media/.htaccess');
 rename($installPath . "/private/htaccess.txt", $installPath . '/private/.htaccess');
 rename($installPath . "/cache/htaccess.txt", $installPath . '/cache/.htaccess');
 rename($installPath . "/themes/htaccess.txt", $installPath . '/themes/.htaccess');
+if (is_file($installPath . "/archives_rev/htaccess.txt")) {
+  rename($installPath . "/archives_rev/htaccess.txt", $installPath . '/archives_rev/.htaccess');
+}
 
 // --------------------------
 // DB 初期設定
