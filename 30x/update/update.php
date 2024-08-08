@@ -3,8 +3,8 @@
 ini_set('max_execution_time', 0);
 
 // ----------------------
-// a-blog cms 3.x 簡単アップデート 
-// update 2023/09/14
+// a-blog cms 3.x 簡単アップデート
+// update 2024/04/19
 // ----------------------
 
 // アップデートバージョンを指定する場合は「$ablogcmsVersion」を指定ください。
@@ -12,7 +12,7 @@ ini_set('max_execution_time', 0);
 
 // バージョンを指定する際には以下の行頭の # を削除してください。
 
-# $ablogcmsVersion = "3.1.0";
+#$ablogcmsVersion = "3.1.0";
 
 // ------------------------------
 
@@ -51,18 +51,56 @@ $database_prefix = DB_PREFIX;
 $port_check = explode( ":", $database_host );
 if ( count( $port_check ) == 2 ) {
   $database_host = $database_host.";port=".$port_check[1];
-} 
+}
 
-// PHP バージョンチェック
-
+$cmsVersionArray = explode(".", $ablogcmsVersion);
 $phpversion = phpversion();
+
 $versionArray = explode(".", $phpversion);
 $version = $versionArray[0].".".$versionArray[1];
 
-if ($version < 7.2) {
-  $error_msg[] = "現在のサーバーの PHP のバージョンが ".$phpversion. " では、a-blog cms Ver.".$ablogcmsVersion." を実行することができません。PHP 7.2.5 以上をご利用ください。";
-} elseif ($version > 8.1) {
-  $error_msg[] = "現在のサーバーの PHP のバージョンが ".$phpversion. " では、a-blog cms Ver.".$ablogcmsVersion." を実行することができません。PHP 8.1.x 以下をご利用ください。";
+if ($cmsVersionArray[0] != 3) {
+    $error_msg[] = "この簡単アップデートは 3.x 用です。<br>Ver.".$ablogcmsVersion." のアップデートはサポートしておりません。";
+} elseif ($cmsVersionArray[1] == 0) {
+    # 3.0.0 - 3.0.12 = 7.2 - 8.0
+    # 3.0.13 - 3.0.x = 7.2 - 8.1
+    if ($cmsVersionArray[2] < 12) {
+        if ($version < 7.2) {
+            $error_msg[] = "現在の PHP のバージョンが ".$phpversion. " です。<br>a-blog cms Ver.".$ablogcmsVersion." へのアップデートする事ができません。<br>PHP のバージョンを 7.2.5 以上に設定ください。";
+        } elseif ($version > 8.0) {
+            $error_msg[] = "現在の PHP のバージョンが ".$phpversion. " です。<br>a-blog cms Ver.".$ablogcmsVersion." へのアップデートする事ができません。<br>PHP のバージョンを 8.0.x 以下に設定ください。";
+        }
+    } else {
+        if ($version < 7.2) {
+            $error_msg[] = "現在の PHP のバージョンが ".$phpversion. " です。<br>a-blog cms Ver.".$ablogcmsVersion." へのアップデートする事ができません。<br>PHP のバージョンを 7.2.5 以上に設定ください。";
+        } elseif ($version > 8.1) {
+            $error_msg[] = "現在の PHP のバージョンが ".$phpversion. " です。<br>a-blog cms Ver.".$ablogcmsVersion." へのアップデートする事ができません。<br>PHP のバージョンを 8.1.x 以下に設定ください。";
+        }
+    }
+} elseif ($cmsVersionArray[1] == 1) {
+    # 3.1.0 - 3.1.6 = 7.2 - 8.1
+    # 3.1.7 - 3.1.13 = 7.3 - 8.1
+    # 3.1.14 - 3.1.x = 7.3 - 8.3
+    if ($cmsVersionArray[2] <= 6) {
+        echo $version;
+        if ($version < 7.2) {
+            $error_msg[] = "現在の PHP のバージョンが ".$phpversion. " です。<br>a-blog cms Ver.".$ablogcmsVersion." へのアップデートする事ができません。<br>PHP のバージョンを 7.2.5 以上に設定ください。";
+        } elseif ($version > 8.1) {
+            $error_msg[] = "現在 PHP のバージョンが ".$phpversion. " です。<br>a-blog cms Ver.".$ablogcmsVersion." へのアップデートする事ができません。<br>PHP のバージョンを 8.1.x 以下に設定ください。";
+        }
+    } elseif ($cmsVersionArray[2] <= 13) {
+        if ($version < 7.3) {
+            $error_msg[] = "現在の PHP のバージョンが ".$phpversion. " です。<br>a-blog cms Ver.".$ablogcmsVersion." へのアップデートする事ができません。<br>PHP のバージョンを 7.3.x 以上に設定ください。";
+        } elseif ($version > 8.1) {
+            $error_msg[] = "現在の PHP のバージョンが ".$phpversion. " です。<br>a-blog cms Ver.".$ablogcmsVersion." へのアップデートする事ができません。<br>PHP のバージョンを 8.1.x 以下に設定ください。";
+        }
+    } else {
+        if ($version < 7.3) {
+            $error_msg[] = "現在の PHP のバージョンが ".$phpversion. " です。<br>a-blog cms Ver.".$ablogcmsVersion." へのアップデートする事ができません。<br>PHP のバージョンを 7.3.x 以上に設定ください。";
+        } elseif ($version > 8.3) {
+            $error_msg[] = "現在の PHP のバージョンが ".$phpversion. " です。<br>a-blog cms Ver.".$ablogcmsVersion." へのアップデートする事ができません。<br>PHP のバージョンを 8.3.x 以下に設定ください。";
+        }
+    }
 }
 
 // 現在のバージョンをチェック
@@ -90,7 +128,7 @@ foreach ($theme_unique_array as $theme_name) {
   foreach ($check_theme as $data){
     array_shift($check_theme);
     $out_theme[] = implode('@', $check_theme);
-  } 
+  }
   $parent_theme_array = array_merge($parent_theme_array, $out_theme);
 }
 $theme_unique_array = array_merge($theme_unique_array, $parent_theme_array);
@@ -106,7 +144,7 @@ $lockFile = realpath('.'). "/update.lock";
 if (is_file($lockFile)) {
   echo "lockFile:".$lockFile;
   $error_msg[] = "二重に実行防止のためのファイル ".$lockFile." を発見し処理できません。";
-} 
+}
 
 ?><!DOCTYPE html>
     <html lang="ja">
@@ -156,9 +194,9 @@ if ($handle = opendir($installPath."/themes")) {
   while(false !== ($theme = readdir($handle))) {
     if ($theme != "." && $theme != "..") {
       if (is_file($theme)) {
-        # 
+        #
       } elseif (in_array($theme,$theme_unique_array)) {
-        # 
+        #
       } elseif ($theme == "system") {
         #
       } else {
@@ -197,14 +235,14 @@ if ($theme_count > 0) {
       <input type="submit" class="acms-admin-btn" value="アップデート実行">
     </form>
     <p>処理を実行してよろしければ、データベースのパスワードを入力してください。</p>
-    
+
 <?php
 
     }
-    
+
     if (isset($input_pass) && $input_pass != DB_PASS) {
       echo "<p class='acms-admin-text-error'>パスワードが間違っています。</p>";
-    } 
+    }
 
     echo "</body></html>";
     exit;
@@ -347,7 +385,7 @@ if ($theme_count > 0) {
     rename("./htaccess.txt", './htaccess_'.$ablogcmsVersion.'.txt');
 
     rename("./private/htaccess.txt", './private/.htaccess');
-    rename("./themes/htaccess.txt", './themes/.htaccess');   
+    rename("./themes/htaccess.txt", './themes/.htaccess');
     rename("./editorconfig.txt", './.editorconfig');
     rename("./env.txt", './.env');
     rename("./gitignore.txt", './.gitignore');

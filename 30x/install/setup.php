@@ -3,8 +3,8 @@
 ini_set('max_execution_time', 0);
 
 // ------------------------------
-// a-blog cms 3.x 簡単セットアップ
-//       last update 2023/10/29
+// a-blog cms 3.1.x 簡単セットアップ
+//       last update 2024/05/17
 // ------------------------------
 
 # $ablogcmsVersion = '3.1.0';
@@ -35,9 +35,10 @@ $dbPass     = '';
 # ACE01 2011 利用できません
 # ACE01 2015 PHP 7.2 / 7.4
 # ACE01 2018 PHP 7.2 / 7.3 / 7.4 / 8.0
-# SV-Baisc   PHP 7.2 / 7.3 / 7.4 / 8.0
+# SV-Basic   PHP 7.2 / 7.3 / 7.4 / 8.0 / 8.1
+# ビジネス スタンダード PHP 7.4 / 8.0 / 8.1
 
-$cpi_php_version = "8.0";
+$cpi_php_version = "8.1";
 
 // --------------------------
 // UTSUWA GitHub版
@@ -49,15 +50,19 @@ $cpi_php_version = "8.0";
 // 特製テーマ設定
 // --------------------------
 
-# $theme_zip_file = "square@ec.zip";
-# $theme_zip_file = "smartblock@blog.zip";
+# $theme_zip_file = "square@ec.zip"; # カード決済対応 ECテーマ
+
+# $theme_zip_file = "site.zip";      # 子ブログ利用 siteテーマ
+# $theme_zip_file = "htmx@site.zip"; # htmx利用 siteテーマ
+
+# $theme_zip_file = "htmx@blog.zip"; # htmx利用 blogテーマ
+# $theme_zip_file = "smartblock@blog.zip"; # smartblock利用 blogテーマ
 
 // --------------------------
 // 拡張アプリ設定
 // --------------------------
 
 # $plugins_zip_file = "ShoppingCart_100.zip";
-
 
 // --------------------------
 
@@ -99,6 +104,14 @@ $phpName = basename($_SERVER['PHP_SELF']);
 $theme_download_url = "http://www.a-blogcms.jp/_download/";
 $plugins_download_url = "http://www.a-blogcms.jp/_download/";
 
+
+$pattern = '/(\d+)\.(\d+)\.(\d+)(-.*)?/';
+if (preg_match($pattern, $ablogcmsVersion, $installVersion)) {
+
+} else {
+  $error_msg[] = "インストールするバージョンの指定が間違っています。<br>インストールを中止します。";
+}
+
 // --------------------------
 // 動作チェック
 // --------------------------
@@ -111,14 +124,47 @@ if (is_file("./license.php")) {
 // バージョンのチェック
 // --------------------------
 
-if ($version < 7.2 || $version >= 8.2) {
+// 3.0.x - 3.1.6 / 7.2 - 8.1
+// 3.1.7 - 3.1.13 / 7.3 - 8.1
+// 3.1.14 - / 7.3 - 8.3
 
-  if ($cpi_check == "secure") {
-    $error_msg[] = $phpName." の \$cpi_php_version で PHP のバージョンを指定ください。";
+if ($installVersion[2] == 0) {
+  if ($version < 7.2 || $version >= 8.2) {
+    if ($cpi_check == "secure") {
+      $error_msg[] = $phpName." の \$cpi_php_version で PHP 7.2 - 8.1 を設定下さい。";
+    } else {
+      $error_msg[] = "PHP 7.2.x - 8.1.x をご利用ください。";
+    }
+  } 
+} elseif ($installVersion[2] == 1) {
+  if ($installVersion[3] >= 14) {
+     if ($version < 7.3 || $version >= 8.4) {
+      if ($cpi_check == "secure") {
+        $error_msg[] = $phpName." の \$cpi_php_version で PHP 7.3 - 8.3 を設定下さい。";
+      } else {
+        $error_msg[] = "PHP 7.3.x - 8.3.x をご利用ください。";
+      }
+    } 
+  } elseif ($installVersion[3] >= 7 && $installVersion[3] <= 11) {
+    if ($version < 7.3 || $version >= 8.2) {
+      if ($cpi_check == "secure") {
+        $error_msg[] = $phpName." の \$cpi_php_version で PHP 7.3 - 8.1 を設定下さい。";
+      } else {
+        $error_msg[] = "PHP 7.3.x - 8.1.x をご利用ください。";
+      }
+    } 
   } else {
-    $error_msg[] = "PHP 7.2.x - 8.1.x をご利用ください。";
+    if ($version < 7.2 || $version >= 8.2) {
+      if ($cpi_check == "secure") {
+        $error_msg[] = $phpName." の \$cpi_php_version で PHP 7.2 - 8.1 を設定下さい。";
+      } else {
+        $error_msg[] = "PHP 7.2.x - 8.1.x をご利用ください。";
+      }
+    }  
   }
-} 
+} else {
+  $error_msg[] = "インストールするバージョンの指定が間違っています。<br>インストールを中止します。";
+}
 
 # ダウンロード元 URL
 $download = sprintf("http://developer.a-blogcms.jp/_package/%s/acms%s.zip", $ablogcmsVersion, $ablogcmsVersion);
@@ -305,11 +351,13 @@ rename($installPath . "/env.txt", $installPath . '/.env');
 rename($installPath . "/gitignore.txt", $installPath . '/.gitignore');
 
 rename($installPath . "/archives/htaccess.txt", $installPath . '/archives/.htaccess');
-rename($installPath . "/archives_rev/htaccess.txt", $installPath . '/archives_rev/.htaccess');
 rename($installPath . "/media/htaccess.txt", $installPath . '/media/.htaccess');
 rename($installPath . "/private/htaccess.txt", $installPath . '/private/.htaccess');
 rename($installPath . "/cache/htaccess.txt", $installPath . '/cache/.htaccess');
 rename($installPath . "/themes/htaccess.txt", $installPath . '/themes/.htaccess');
+if (is_file($installPath . "/archives_rev/htaccess.txt")) {
+  rename($installPath . "/archives_rev/htaccess.txt", $installPath . '/archives_rev/.htaccess');
+}
 
 // --------------------------
 // DB 初期設定
@@ -378,7 +426,7 @@ if (isset($theme_zip_file)) {
     exit;
   }
 
-  dir_shori("move", $theme_path . "/bin/" . $theme_name, $installPath . "/setup/bin/" . $theme_name);
+  dir_shori("move", $theme_path . "/bin/" , $installPath . "/setup/bin/" );
   dir_shori("move", $theme_path . "/themes/" , $installPath . "/themes/" );
 
   rename( $theme_path . "/tpl/install.html", $installPath . "/setup/tpl/install.html");
@@ -657,6 +705,9 @@ function dir_shori($shori, $nowDir, $newDir = "")
               copy($nowDir . "/" . $file, $newDir . "/" . $file);
             }
           } elseif ($shori == "move") {
+            if (is_dir($newDir . "/" . $file)) {
+              dir_shori("delete", $newDir . "/" . $file, "");
+            }
             rename($nowDir . "/" . $file, $newDir . "/" . $file);
           } elseif ($shori == "delete") {
             if (filetype($nowDir . "/" . $file) == "dir") {

@@ -1,14 +1,14 @@
 {
   "name": "acms-easy-setup",
-  "version": "2.0.11",
+  "version": "2.0.14",
   "description": "より簡単に、ご利用の環境に合わせて a-blog cms をアップデートできるパッケージです。",
   "main": "deploy.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 0",
     "deploy": "node deploy.js",
-    "patch": "npm version patch && npm run deploy",
-    "minor": "npm version minor && npm run deploy",
-    "major": "npm version major && npm run deploy"
+    "patch": "npm version patch --no-git-tag-version && npm run deploy",
+    "minor": "npm version minor --no-git-tag-version && npm run deploy",
+    "major": "npm version major --no-git-tag-version && npm run deploy"
   },
   "repository": {
     "type": "git",
