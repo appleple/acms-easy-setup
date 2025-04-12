@@ -4,10 +4,10 @@ ini_set('max_execution_time', 0);
 
 // ------------------------------
 // a-blog cms 3.1.x 簡単セットアップ
-//       last update 2024/05/17
+//       last update 2025/04/12
 // ------------------------------
 
-# $ablogcmsVersion = '3.1.0';
+#$ablogcmsVersion = '3.1.43';
 
 // ERROR になる場合や個別に 3.0.x系のバージョンを
 // 指定したい場合には、バージョンを設定してください。
@@ -182,6 +182,26 @@ $http_host = explode(":", $_SERVER['HTTP_HOST']);
 if (is_file($installPath."/".$zipFile) || is_file($installPath."/".$zipFile)) {
   $_POST['action'] = "";
 }
+
+$mamp_check = get_cfg_var('cfg_file_path');
+if (strpos($mamp_check, 'MAMP') !== false) {
+
+  $httpdconf = '/Applications/MAMP/conf/apache/httpd.conf';
+  $mamp_rewrite_module_off = "";
+
+  $fileContents = file($httpdconf);
+  foreach ($fileContents as $key => $line) {
+    if (strpos($line, 'rewrite_module') !== false) {
+      if (preg_match('/^\s*#/', $line)) {
+        $mamp_rewrite_module_off = "<h2>MAMP httpd.confチェック</h2><p>rewrite_module の行がコメントアウトされており、このままでは a-blog cms が動作しません。<br>httpd.conf を修正し、バックアップとして httpd.conf.backup を生成します。";
+      }
+    }
+  }
+}
+
+
+
+
 
 ?>
 <!DOCTYPE html>
@@ -373,6 +393,10 @@ $data = sprintf("<?php
 $db_default = $installPath . "/setup/lib/db_default.php";
 file_put_contents($db_default, $data);
 
+if (is_file($installPath."/db_default.php")) {
+  rename("./db_default.php", "./setup/lib/db_default.php");
+}
+
 // --------------------------
 // ファイルの削除
 // --------------------------
@@ -387,6 +411,37 @@ if (is_file("./index.html")) {
 
 # プログラム以外のディレクトリを削除
 dir_shori("delete", $zipAfterDirName);
+
+
+// --------------------------
+// MAMP暫定対応
+// --------------------------
+$mamp_httpdconf = '/Applications/MAMP/conf/apache/httpd.conf';
+$mamp_msg = "";
+
+if (is_file($mamp_httpdconf)) {
+ 
+  $update_httpdconf = false;
+  $mamp_httpdconf_backup = '/Applications/MAMP/conf/apache/httpd.conf.backup';
+
+  $fileContents = file($mamp_httpdconf);
+
+  foreach ($fileContents as $key => $line) {
+    if (strpos($line, 'rewrite_module') !== false) {
+        if (preg_match('/^\s*#/', $line)) {
+            $fileContents[$key] = preg_replace('/^\s*#/', '', $line);
+            $update_httpdconf = true;
+        }
+        break;
+    }
+  }
+
+  if ($update_httpdconf == true) {
+    copy($mamp_httpdconf, $mamp_httpdconf_backup);
+    file_put_contents($mamp_httpdconf, implode('', $fileContents));
+    $mamp_msg = "<p>httpd.conf を修正し、バックアップとして httpd.conf.backup を生成しました。<br><strong>MAMPを再起動してください。</strong></p>";
+  }
+}
 
 // --------------------------
 // 特製テーマファイルをダウンロード 
@@ -558,6 +613,7 @@ if (isset($github_utsuwa)) {
   dir_shori("move", $installPath."/acms-utsuwa-main",$installPath."/themes/utsuwa");
 
   unlink($github_utsuwa_zip);
+
 } 
 
 // --------------------------
@@ -570,6 +626,8 @@ if (isset($github_utsuwa)) {
 
   <p>a-blog cms のインストール準備が完了しました。</p>
   <p>この <?php echo $phpName; ?>ファイルについては削除済みです。</p>
+
+  <?php echo $mamp_msg; ?>
 
   <form action="index.php" method="POST">
   <input type="submit" name="action" value="インストーラーへ移動">
@@ -661,6 +719,13 @@ echo "</ul>";
 }
 
   if (empty($error_msg)){
+
+
+    if ($mamp_rewrite_module_off) {
+      echo $mamp_rewrite_module_off;
+    }
+
+
     ?>
 
 <form action="<?php echo $phpName; ?>" method="POST" onSubmit="return double()">
