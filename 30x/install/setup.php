@@ -81,7 +81,7 @@ $plugins_download_url = "http://www.a-blogcms.jp/_download/";
 
 $error_msg = array();
 
-if (!isset($ablogcmsVersion)) {
+if (empty($ablogcmsVersion)) {
   $check = download_version_check();
   if ($check) {
     $ablogcmsVersion = $check;
@@ -294,21 +294,28 @@ if ($http_host[0] == 'localhost') {
     $dbPass     = 'root';
   }
 }
-
 // --------------------------
 // a-blog cms ファイルをダウンロード
 // --------------------------
 
-$fp = fopen($download, "r");
+$fp = fopen($download, "rb");
 if ($fp !== FALSE) {
-  file_put_contents($zipFile, "");
+  $output = fopen($zipFile, "wb");
+  if ($output === FALSE) {
+    echo 'a-blog cms file open Error ! : ' . $zipFile;
+    fclose($fp);
+    exit;
+  }
+
   while (!feof($fp)) {
     $buffer = fread($fp, 4096);
     if ($buffer !== FALSE) {
-      file_put_contents($zipFile, $buffer, FILE_APPEND);
+      fwrite($output, $buffer);
     }
   }
+
   fclose($fp);
+  fclose($output);
 } else {
   echo 'a-blog cms download Error ! : ' . $download;
   exit;
