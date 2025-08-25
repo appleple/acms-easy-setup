@@ -4,13 +4,13 @@ ini_set('max_execution_time', 0);
 
 // ------------------------------
 // a-blog cms 3.2.x 簡単セットアップ
-//       last update 2025/08/02
+//       last update 2025/08/26
 // ------------------------------
 
 $ablogcmsVersion = '';
 
 # $ablogcmsVersion = '3.1.50';
-# $ablogcmsVersion = '3.2.0-beta.12';
+# $ablogcmsVersion = '3.2.0-rc.0';
 
 // ERROR になる場合や個別に 3.0.x系のバージョンを
 // 指定したい場合には、バージョンを設定してください。
