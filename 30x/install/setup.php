@@ -393,6 +393,7 @@ rename($installPath . "/gitignore.txt", $installPath . '/.gitignore');
 
 rename($installPath . "/archives/htaccess.txt", $installPath . '/archives/.htaccess');
 rename($installPath . "/media/htaccess.txt", $installPath . '/media/.htaccess');
+rename($installPath . "/storage/htaccess.txt", $installPath . '/storage/.htaccess');
 rename($installPath . "/private/htaccess.txt", $installPath . '/private/.htaccess');
 rename($installPath . "/cache/htaccess.txt", $installPath . '/cache/.htaccess');
 rename($installPath . "/themes/htaccess.txt", $installPath . '/themes/.htaccess');
