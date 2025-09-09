@@ -42,3 +42,38 @@ a-blog cms が動作している環境で利用可能です。
 
 ※ これまでのファイルは backup_yyyymmddhhmmss ディレクトリに移動してバックアップしておいてくれます。
   もし、途中でエラーになった際には、update.lock というファイルが作られます。再実行する際には update.lockファイルを削除してください。
+
+# ----------------------------
+# 実行できない場合
+# ----------------------------
+セキュリティ対策で、.htaccessで制限している可能性があります。以下のように `.htaccess` を修正して対応ください。
+
+```
+# ---------------------------------------
+# index.php以外のPHPスクリプトを実行禁止
+# ---------------------------------------
+<FilesMatch "\.php$">
+  Require all denied
+</FilesMatch>
+<Files "index.php">
+  Require all granted
+</Files>
+# 以下3行を追加
+<Files "update.php">
+  Require all granted
+</Files>
+```
+
+実行可能なスクリプト制限がコメントアウトされている場合
+
+```
+# ------------------------------------------------------------------
+# 実行可能なスクリプト (PHP, CGI, Perl, Python, Shell, EXE) をブロック
+# ------------------------------------------------------------------
+RewriteCond %{REQUEST_URI} !^/index\.php$ [NC]
+RewriteCond %{REQUEST_URI} !^/_setup/.*\.php$ [NC]
+RewriteCond %{REQUEST_URI} !^/update\.php$ [NC]
+# RewriteCond %{REQUEST_URI} !^/other2/index\.php$ [NC]
+RewriteCond %{REQUEST_URI} \.(php|cgi|pl|py|sh|exe|bin|dll|bat|cmd|msi|jar)$ [NC]
+RewriteRule ^.*$ - [F,L]
+```
