@@ -3,11 +3,14 @@
 ini_set('max_execution_time', 0);
 
 // ------------------------------
-// a-blog cms 3.1.x 簡単セットアップ
-//       last update 2025/04/12
+// a-blog cms 3.2.x 簡単セットアップ
+//       last update 2025/09/08
 // ------------------------------
 
-#$ablogcmsVersion = '3.1.43';
+$ablogcmsVersion = '';
+
+# $ablogcmsVersion = '3.2.0';
+# $ablogcmsVersion = '3.1.53';
 
 // ERROR になる場合や個別に 3.0.x系のバージョンを
 // 指定したい場合には、バージョンを設定してください。
@@ -50,11 +53,15 @@ $cpi_php_version = "8.1";
 // 特製テーマ設定
 // --------------------------
 
-# $theme_zip_file = "square@ec.zip"; # カード決済対応 ECテーマ
 
+// 特製テーマのインストール元を指定
+
+$theme_download_url = "http://www.a-blogcms.jp/_download/";
+
+// 以下のファイルは 3.2 に対応していません。
+# $theme_zip_file = "square@ec.zip"; # カード決済対応 ECテーマ
 # $theme_zip_file = "site.zip";      # 子ブログ利用 siteテーマ
 # $theme_zip_file = "htmx@site.zip"; # htmx利用 siteテーマ
-
 # $theme_zip_file = "htmx@blog.zip"; # htmx利用 blogテーマ
 # $theme_zip_file = "smartblock@blog.zip"; # smartblock利用 blogテーマ
 
@@ -62,13 +69,19 @@ $cpi_php_version = "8.1";
 // 拡張アプリ設定
 // --------------------------
 
+// 拡張アプリのインストール元を指定
+
+$plugins_download_url = "http://www.a-blogcms.jp/_download/";
+
+// 拡張アプリのインストールする zip ファイル名を指定
+
 # $plugins_zip_file = "ShoppingCart_100.zip";
 
 // --------------------------
 
 $error_msg = array();
 
-if (!isset($ablogcmsVersion)) {
+if (empty($ablogcmsVersion)) {
   $check = download_version_check();
   if ($check) {
     $ablogcmsVersion = $check;
@@ -101,17 +114,6 @@ if ($cpi_check == "secure") {
 
 $phpName = basename($_SERVER['PHP_SELF']);
 
-$theme_download_url = "http://www.a-blogcms.jp/_download/";
-$plugins_download_url = "http://www.a-blogcms.jp/_download/";
-
-
-$pattern = '/(\d+)\.(\d+)\.(\d+)(-.*)?/';
-if (preg_match($pattern, $ablogcmsVersion, $installVersion)) {
-
-} else {
-  $error_msg[] = "インストールするバージョンの指定が間違っています。<br>インストールを中止します。";
-}
-
 // --------------------------
 // 動作チェック
 // --------------------------
@@ -126,48 +128,66 @@ if (is_file("./license.php")) {
 
 // 3.0.x - 3.1.6 / 7.2 - 8.1
 // 3.1.7 - 3.1.13 / 7.3 - 8.1
-// 3.1.14 - / 7.3 - 8.3
+// 3.1.14 - 3.1.x / 7.3 - 8.3
+// 3.2.0 - / 8.1 - 8.4
 
-if ($installVersion[2] == 0) {
-  if ($version < 7.2 || $version >= 8.2) {
-    if ($cpi_check == "secure") {
-      $error_msg[] = $phpName." の \$cpi_php_version で PHP 7.2 - 8.1 を設定下さい。";
+$pattern = '/^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z]+)\.(\d+))?$/';
+if (preg_match($pattern, $ablogcmsVersion, $matches)) {
+
+    $major = (int) $matches[1];
+    $minor = (int) $matches[2];
+    $patch = (int) $matches[3];
+
+    $semver = "{$major}.{$minor}.{$patch}";
+
+    $minVersion = null;
+    $maxVersion = null;
+
+    if (version_compare($semver, '3.0.0', '>=') && version_compare($semver, '3.1.7', '<')) {
+        $minVersion = '7.2';
+        $maxVersion = '8.1';
+    } elseif (version_compare($semver, '3.1.7', '>=') && version_compare($semver, '3.1.14', '<')) {
+        $minVersion = '7.3';
+        $maxVersion = '8.1';
+    } elseif (version_compare($semver, '3.1.14', '>=') && version_compare($semver, '3.2.0', '<')) {
+        $minVersion = '7.3';
+        $maxVersion = '8.3';
+    } elseif (version_compare($semver, '3.2.0', '>=')) {
+        $minVersion = '8.1';
+        $maxVersion = '8.4';
     } else {
-      $error_msg[] = "PHP 7.2.x - 8.1.x をご利用ください。";
+        $error_msg[] = "インストールするバージョンの指定が間違っています。<br>インストールを中止します。";
     }
-  } 
-} elseif ($installVersion[2] == 1) {
-  if ($installVersion[3] >= 14) {
-     if ($version < 7.3 || $version >= 8.4) {
-      if ($cpi_check == "secure") {
-        $error_msg[] = $phpName." の \$cpi_php_version で PHP 7.3 - 8.3 を設定下さい。";
-      } else {
-        $error_msg[] = "PHP 7.3.x - 8.3.x をご利用ください。";
-      }
-    } 
-  } elseif ($installVersion[3] >= 7 && $installVersion[3] <= 11) {
-    if ($version < 7.3 || $version >= 8.2) {
-      if ($cpi_check == "secure") {
-        $error_msg[] = $phpName." の \$cpi_php_version で PHP 7.3 - 8.1 を設定下さい。";
-      } else {
-        $error_msg[] = "PHP 7.3.x - 8.1.x をご利用ください。";
-      }
-    } 
-  } else {
-    if ($version < 7.2 || $version >= 8.2) {
-      if ($cpi_check == "secure") {
-        $error_msg[] = $phpName." の \$cpi_php_version で PHP 7.2 - 8.1 を設定下さい。";
-      } else {
-        $error_msg[] = "PHP 7.2.x - 8.1.x をご利用ください。";
-      }
-    }  
-  }
+
+    if ($minVersion !== null && $maxVersion !== null) {
+        if (
+            version_compare($version, $minVersion, '<') ||
+            version_compare($version, $maxVersion, '>')
+        ) {
+            if ($cpi_check === 'secure') {
+                $error_msg[] = sprintf(
+                    '%s の $cpi_php_version で PHP %s.x - %s.x を設定下さい。',
+                    $phpName,
+                    $minVersion,
+                    $maxVersion
+                );
+            } else {
+                $error_msg[] = sprintf(
+                    'PHP %s.x - %s.x をご利用ください。',
+                    $minVersion,
+                    $maxVersion
+                );
+            }
+        }
+    }
+
 } else {
-  $error_msg[] = "インストールするバージョンの指定が間違っています。<br>インストールを中止します。";
+    $error_msg[] = "インストールするバージョンの指定が間違っています。<br>インストールを中止します。";
 }
 
 # ダウンロード元 URL
 $download = sprintf("http://developer.a-blogcms.jp/_package/%s/acms%s.zip", $ablogcmsVersion, $ablogcmsVersion);
+
 $zipFile = sprintf("./acms%s.zip", $ablogcmsVersion);
 
 $http_header = get_headers($download);
@@ -183,12 +203,10 @@ if (is_file($installPath."/".$zipFile) || is_file($installPath."/".$zipFile)) {
   $_POST['action'] = "";
 }
 
+$mamp_rewrite_module_off = "";
 $mamp_check = get_cfg_var('cfg_file_path');
 if (strpos($mamp_check, 'MAMP') !== false) {
-
   $httpdconf = '/Applications/MAMP/conf/apache/httpd.conf';
-  $mamp_rewrite_module_off = "";
-
   $fileContents = file($httpdconf);
   foreach ($fileContents as $key => $line) {
     if (strpos($line, 'rewrite_module') !== false) {
@@ -198,10 +216,6 @@ if (strpos($mamp_check, 'MAMP') !== false) {
     }
   }
 }
-
-
-
-
 
 ?>
 <!DOCTYPE html>
@@ -280,21 +294,28 @@ if ($http_host[0] == 'localhost') {
     $dbPass     = 'root';
   }
 }
-
 // --------------------------
 // a-blog cms ファイルをダウンロード
 // --------------------------
 
-$fp = fopen($download, "r");
+$fp = fopen($download, "rb");
 if ($fp !== FALSE) {
-  file_put_contents($zipFile, "");
+  $output = fopen($zipFile, "wb");
+  if ($output === FALSE) {
+    echo 'a-blog cms file open Error ! : ' . $zipFile;
+    fclose($fp);
+    exit;
+  }
+
   while (!feof($fp)) {
     $buffer = fread($fp, 4096);
     if ($buffer !== FALSE) {
-      file_put_contents($zipFile, $buffer, FILE_APPEND);
+      fwrite($output, $buffer);
     }
   }
+
   fclose($fp);
+  fclose($output);
 } else {
   echo 'a-blog cms download Error ! : ' . $download;
   exit;
@@ -351,9 +372,9 @@ if (is_file($moto_htaccessFile)) {
 
   rename($installPath . "/htaccess.txt", $installPath . '/.htaccess');
 
-  if ($cpi_check == "secure") { 
+  if ($cpi_check == "secure") {
 
-    $htaccess = file_get_contents($installPath."/.htaccess");    
+    $htaccess = file_get_contents($installPath."/.htaccess");
     $cpi_htaccess = sprintf("<Files ~ \"\.ini\">
 deny from all
 </Files>
@@ -363,7 +384,7 @@ AddHandler x-httpd-php%s .php\n\n",$cpi_htaccess_php);
   $fp = fopen($installPath."/.htaccess",'w');
   fwrite($fp,$cpi_htaccess.$htaccess);
   fclose($fp);
-  } 
+  }
 }
 
 rename($installPath . "/editorconfig.txt", $installPath . '/.editorconfig');
@@ -372,6 +393,7 @@ rename($installPath . "/gitignore.txt", $installPath . '/.gitignore');
 
 rename($installPath . "/archives/htaccess.txt", $installPath . '/archives/.htaccess');
 rename($installPath . "/media/htaccess.txt", $installPath . '/media/.htaccess');
+rename($installPath . "/storage/htaccess.txt", $installPath . '/storage/.htaccess');
 rename($installPath . "/private/htaccess.txt", $installPath . '/private/.htaccess');
 rename($installPath . "/cache/htaccess.txt", $installPath . '/cache/.htaccess');
 rename($installPath . "/themes/htaccess.txt", $installPath . '/themes/.htaccess');
@@ -420,7 +442,7 @@ $mamp_httpdconf = '/Applications/MAMP/conf/apache/httpd.conf';
 $mamp_msg = "";
 
 if (is_file($mamp_httpdconf)) {
- 
+
   $update_httpdconf = false;
   $mamp_httpdconf_backup = '/Applications/MAMP/conf/apache/httpd.conf.backup';
 
@@ -444,7 +466,7 @@ if (is_file($mamp_httpdconf)) {
 }
 
 // --------------------------
-// 特製テーマファイルをダウンロード 
+// 特製テーマファイルをダウンロード
 // --------------------------
 
 if (isset($theme_zip_file)) {
@@ -454,7 +476,7 @@ if (isset($theme_zip_file)) {
   $theme_name = $theme_name_array[0];
   $theme_zip_url = $theme_download_url . $theme_zip_file;
   $theme_path = $installPath."/".$theme_name;
-  
+
   $fp = fopen($theme_zip_url, "r");
   if ($fp !== FALSE) {
     file_put_contents($theme_zip_file, "");
@@ -518,7 +540,7 @@ if (isset($theme_zip_file)) {
         echo "config.server.php fopen error";
       }
       fclose($fp);
-      
+
   }
 
   dir_shori("delete", $theme_name);
@@ -526,7 +548,7 @@ if (isset($theme_zip_file)) {
 }
 
 // --------------------------
-// 拡張アプリをダウンロード 
+// 拡張アプリをダウンロード
 // --------------------------
 
 if (isset($plugins_zip_file)) {
@@ -573,55 +595,11 @@ if (isset($plugins_zip_file)) {
 }
 
 // --------------------------
-// GitHub版 utsuwa インポート
-// --------------------------
-
-if (isset($github_utsuwa)) {
-
-  $github_utsuwa_zip ="acms-utsuwa-main.zip";
-
-  $fp = fopen($github_utsuwa, "r");
-  if ($fp !== FALSE) {
-    file_put_contents($github_utsuwa_zip, "");
-    while (!feof($fp)) {
-      $buffer = fread($fp, 4096);
-      if ($buffer !== FALSE) {
-        file_put_contents($github_utsuwa_zip, $buffer, FILE_APPEND);
-      }
-    }
-    fclose($fp);
-  } else {
-    echo 'github utsuwa download Error ! : ' . $download;
-    exit;
-  }
-
-  $zip = new ZipArchive();
-  $res = $zip->open($github_utsuwa_zip);
-
-  if ($res === true) {
-    $zip->extractTo($installPath);
-    $zip->close();
-  } else {
-    echo 'github utsuwa unZip Error ! : ' . $github_utsuwa_zip;
-    exit;
-  }
-
-  dir_shori("delete", $installPath."/setup/bin/utsuwa");
-  dir_shori("move", $installPath."/acms-utsuwa-main/_bin/utsuwa",$installPath."/setup/bin/utsuwa");
-  dir_shori("delete", $installPath."/acms-utsuwa-main/_bin");
-  dir_shori("delete", $installPath."/themes/utsuwa");
-  dir_shori("move", $installPath."/acms-utsuwa-main",$installPath."/themes/utsuwa");
-
-  unlink($github_utsuwa_zip);
-
-} 
-
-// --------------------------
 // インストーラーに飛ぶ
 // --------------------------
 
 ?>
-  
+
   <h2>セットアップ完了</h2>
 
   <p>a-blog cms のインストール準備が完了しました。</p>
@@ -636,18 +614,18 @@ if (isset($github_utsuwa)) {
 <?php
 
 } else {
-  
+
   ?>
 
   <p>a-blog cms のパッケージのダウンロードとファイルのリネーム作業を行います。</p>
 
   <h2>PHP バージョンチェック</h2>
 
-  <ul><li>Ver. <?php 
+  <ul><li>Ver. <?php
   if ($cpi_php_version && $cpi_check == "secure") {
     echo "<del>";
   }
-  
+
   echo phpversion();
 
   if ($cpi_php_version && $cpi_check == "secure") {
@@ -710,10 +688,10 @@ foreach($plugins_array as $plugins_zip) {
 
   if ( $httt_hedaer0_code[1] != "200" ) {
     $error_msg[] = "拡張アプリ「".$plugins_name[0]."」のダウンロード先の情報が間違っています。";
-    echo "<li><del>".$plugins_name[0]."</del></li>";  
+    echo "<li><del>".$plugins_name[0]."</del></li>";
   } else {
-    echo "<li>".$plugins_name[0]."</li>";  
-  }     
+    echo "<li>".$plugins_name[0]."</li>";
+  }
 }
 echo "</ul>";
 }
