@@ -34,7 +34,7 @@ if (!isset($ablogcmsVersion)) {
     $ablogcmsVersion = $check;
   } else {
     $error_msg[] = "最新版の a-blog cms のバージョンの取得に失敗しました。<br>
-    手動で update.php の中の \$ablogcmsVersion = \"3.1.0\"; を書き換え指定のバージョンを設定ください。<br>
+    手動で update.php の中の \$ablogcmsVersion = \"3.2.0\"; を書き換え指定のバージョンを設定ください。<br>
     また # が先頭についていると未設定という扱いになりますので # があれば削除ください。";
   }
 }
@@ -504,11 +504,11 @@ function download_version_check()
   $options['ssl']['verify_peer'] = false;
   $options['ssl']['verify_peer_name'] = false;
   $html = file_get_contents('https://developer.a-blogcms.jp/download/', false, stream_context_create($options));
-  preg_match('/<h1 class="entry-title" id="(.*)"><a href="https:\/\/developer.a-blogcms.jp\/download\/package\/3.1.(.*).html">(.*)<\/a><\/h1>/', $html, $matches);
+  preg_match('/<h1 class="entry-title" id="(.*)"><a href="https:\/\/developer.a-blogcms.jp\/download\/package\/3.2.(.*).html">(.*)<\/a><\/h1>/', $html, $matches);
 
   if (count($matches) ){
     if (is_numeric($matches[2])) {
-      return "3.1." . $matches[2];
+      return "3.2." . $matches[2];
     } else {
       return;
     }
