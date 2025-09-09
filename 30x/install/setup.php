@@ -4,7 +4,7 @@ ini_set('max_execution_time', 0);
 
 // ------------------------------
 // a-blog cms 3.2.x 簡単セットアップ
-//       last update 2025/09/08
+//       last update 2025/09/09
 // ------------------------------
 
 $ablogcmsVersion = '';
