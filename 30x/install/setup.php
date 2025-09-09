@@ -44,12 +44,6 @@ $dbPass     = '';
 $cpi_php_version = "8.1";
 
 // --------------------------
-// UTSUWA GitHub版
-// --------------------------
-
-# $github_utsuwa = "https://github.com/appleple/acms-utsuwa/archive/refs/heads/main.zip";
-
-// --------------------------
 // 特製テーマ設定
 // --------------------------
 
@@ -652,26 +646,7 @@ if (isset($theme_zip_file)) {
   }
 }
 
-if (isset($github_utsuwa)) {
-
-  $html = file_get_contents('https://github.com/appleple/acms-utsuwa');
-  $pattern_ver = '@<span class="css-truncate css-truncate-target text-bold mr-2" style="max-width: none;">(.*?)</span>@';
-  if( preg_match_all($pattern_ver, $html, $result) ){
-      $utsuwa_version = $result[0][0];
-  }
-
-  $pattern_date = '@<relative-time datetime="(.*?)" class="no-wrap">(.*?)</relative-time>@';
-  if( preg_match_all($pattern_date, $html, $result) ){
-    $utsuwa_update = $result[2][0];
-  }
-
-
-  echo "<h2>GitHub版 UTSUWA インポート</h2>";
-  echo "<ul><li>utsuwa ".$utsuwa_version." / ".$utsuwa_update."</li></ul>";
-}
-
-
-if (isset($plugins_zip_file)) {
+  if (isset($plugins_zip_file)) {
 
 $plugins_array = explode("|",$plugins_zip_file);
 echo "<h2>Plugins Install</h2>";
@@ -771,7 +746,7 @@ function dir_shori($shori, $nowDir, $newDir = "")
 }
 
 /**
- * Version 3.0.x のチェック用
+ * Version 3.2.x のチェック用
  * 正常にチェックできない場合には 空 でかえす。
  */
 function download_version_check()
@@ -779,10 +754,10 @@ function download_version_check()
   $options['ssl']['verify_peer'] = false;
   $options['ssl']['verify_peer_name'] = false;
   $html = file_get_contents('https://developer.a-blogcms.jp/download/', false, stream_context_create($options));
-  preg_match('/<h1 class="entry-title" id="(.*)"><a href="https:\/\/developer.a-blogcms.jp\/download\/package\/3.1.(.*).html">(.*)<\/a><\/h1>/', $html, $matches);
+  preg_match('/<h1 class="entry-title" id="(.*)"><a href="https:\/\/developer.a-blogcms.jp\/download\/package\/3.2.(.*).html">(.*)<\/a><\/h1>/', $html, $matches);
 
   if (is_numeric($matches[2])) {
-    return "3.1." . $matches[2];
+    return "3.2." . $matches[2];
   } else {
     return;
   }
