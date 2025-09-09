@@ -28,3 +28,38 @@
 
 現在は、株式会社KDDIウェブコミュニケーションズ の 共用レンタルサーバーサービスに対しての設定が自動で行うことができるようになっております。サーバーのIPアドレスからホスト名の逆引きをして secure.ne.jp のサーバーの時に、.htaccess に PHP のバージョンを記述する設定を自動で行うようにしています。
 
+
+# ----------------------------
+# 実行できない場合
+# ----------------------------
+セキュリティ対策で、.htaccessで制限している可能性があります。以下のように `.htaccess` を修正して対応ください。
+
+```
+# ---------------------------------------
+# index.php以外のPHPスクリプトを実行禁止
+# ---------------------------------------
+<FilesMatch "\.php$">
+  Require all denied
+</FilesMatch>
+<Files "index.php">
+  Require all granted
+</Files>
+# 以下3行を追加
+<Files "setup.php">
+  Require all granted
+</Files>
+```
+
+実行可能なスクリプト制限がコメントアウトされている場合
+
+```
+# ------------------------------------------------------------------
+# 実行可能なスクリプト (PHP, CGI, Perl, Python, Shell, EXE) をブロック
+# ------------------------------------------------------------------
+RewriteCond %{REQUEST_URI} !^/index\.php$ [NC]
+RewriteCond %{REQUEST_URI} !^/_setup/.*\.php$ [NC]
+RewriteCond %{REQUEST_URI} !^/setup\.php$ [NC]
+# RewriteCond %{REQUEST_URI} !^/other2/index\.php$ [NC]
+RewriteCond %{REQUEST_URI} \.(php|cgi|pl|py|sh|exe|bin|dll|bat|cmd|msi|jar)$ [NC]
+RewriteRule ^.*$ - [F,L]
+```
