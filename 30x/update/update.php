@@ -4,7 +4,7 @@ ini_set('max_execution_time', 0);
 
 // ----------------------
 // a-blog cms 3.x 簡単アップデート
-// update 2024/04/19
+// update 2025/09/09
 // ----------------------
 
 // アップデートバージョンを指定する場合は「$ablogcmsVersion」を指定ください。
@@ -12,7 +12,7 @@ ini_set('max_execution_time', 0);
 
 // バージョンを指定する際には以下の行頭の # を削除してください。
 
-#$ablogcmsVersion = "3.1.0";
+#$ablogcmsVersion = "3.2.0";
 
 // ------------------------------
 
@@ -101,6 +101,13 @@ if ($cmsVersionArray[0] != 3) {
             $error_msg[] = "現在の PHP のバージョンが ".$phpversion. " です。<br>a-blog cms Ver.".$ablogcmsVersion." へのアップデートする事ができません。<br>PHP のバージョンを 8.3.x 以下に設定ください。";
         }
     }
+} elseif ($cmsVersionArray[1] == 2) {
+  # 3.2.0 - 3.2.x = 8.1 - 8.4
+  if ($version < 8.1) {
+    $error_msg[] = "現在の PHP のバージョンが " . $phpversion . " です。<br>a-blog cms Ver." . $ablogcmsVersion . " へのアップデートする事ができません。<br>PHP のバージョンを 8.1.x 以上に設定ください。";
+  } elseif ($version > 8.4) {
+    $error_msg[] = "現在の PHP のバージョンが " . $phpversion . " です。<br>a-blog cms Ver." . $ablogcmsVersion . " へのアップデートする事ができません。<br>PHP のバージョンを 8.4.x 以下に設定ください。";
+  }
 }
 
 // 現在のバージョンをチェック
