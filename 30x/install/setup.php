@@ -278,7 +278,7 @@ $mdHi = date("mdHi");
 if ($http_host[0] == 'localhost') {
 
   $dbHost     = '127.0.0.1';
-  $dbName     = 'DBacms_' . $ablogcmsVersionNum . "_" . $mdHi;
+  $dbName     = 'db_acms_' . $ablogcmsVersionNum . "_" . $mdHi;
   $dbCreate   = 'checked';
   $dbUser     = 'root';
   $dbPass     = '';
