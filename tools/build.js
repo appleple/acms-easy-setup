@@ -16,7 +16,7 @@ const zip = (src, dist) => {
 
     archive.on('error', reject);
     archive.pipe(output);
-    archive.directory(src).finalize();
+    archive.directory(src, false).finalize();
   });
 };
 
@@ -24,8 +24,8 @@ const zip = (src, dist) => {
   const buildDir = path.join(root, 'build');
   fs.mkdirsSync(buildDir);
 
-  await zip(path.join(root, 'packages', 'install', 'install'), path.join(buildDir, 'install.zip'));
-  await zip(path.join(root, 'packages', 'update', 'update'), path.join(buildDir, 'update.zip'));
+  await zip(path.join(root, 'packages', 'install'), path.join(buildDir, 'install.zip'));
+  await zip(path.join(root, 'packages', 'update'), path.join(buildDir, 'update.zip'));
 
   console.log('Build complete.');
 })().catch((err) => {
