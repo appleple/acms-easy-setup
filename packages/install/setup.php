@@ -279,7 +279,7 @@ if (getenv('IS_DDEV_PROJECT') == 'true') {
 
   $dbHost     = 'db';
   $dbName     = 'db';
-  $dbCreate   = 'checked';
+  $dbCreate   = '';
   $dbUser     = 'db';
   $dbPass     = 'db';
 	
