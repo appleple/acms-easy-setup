@@ -272,10 +272,18 @@ $ablogcmsDir = $installPath . "/" . $zipAfterDirName . "/" . $cmsDirName . "/";
 $mdHi = date("mdHi");
 
 // --------------------------
-// Mac & Windows ローカルDB設定
+// Mac & Windows & DDEV ローカルDB設定 
 // --------------------------
 
-if ($http_host[0] == 'localhost') {
+if (getenv('IS_DDEV_PROJECT') == 'true') {
+
+  $dbHost     = 'db';
+  $dbName     = 'db';
+  $dbCreate   = 'checked';
+  $dbUser     = 'db';
+  $dbPass     = 'db';
+	
+} elseif ($http_host[0] == 'localhost') {
 
   $dbHost     = '127.0.0.1';
   $dbName     = 'DBacms_' . $ablogcmsVersionNum . "_" . $mdHi;
