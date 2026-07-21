@@ -52,12 +52,14 @@ $cpi_php_version = "8.1";
 
 $theme_download_url = "http://www.a-blogcms.jp/_download/";
 
-// 以下のファイルは 3.2 に対応していません。
 # $theme_zip_file = "square@ec.zip"; # カード決済対応 ECテーマ
-# $theme_zip_file = "site.zip";      # 子ブログ利用 siteテーマ
-# $theme_zip_file = "htmx@site.zip"; # htmx利用 siteテーマ
-# $theme_zip_file = "htmx@blog.zip"; # htmx利用 blogテーマ
-# $theme_zip_file = "smartblock@blog.zip"; # smartblock利用 blogテーマ
+
+// GitHub Releases で配布されているテーマを使う場合は、
+// $theme_download_url もダウンロード元の URL に合わせて書き換えてください。
+# $theme_download_url = "https://github.com/appleple/acms-develop/releases/latest/download/";
+# $theme_zip_file = "develop.zip"; # develop テーマ
+# $theme_download_url = "https://github.com/appleple/acms-utsuwa/releases/latest/download/";
+# $theme_zip_file = "utsuwa.zip"; # utsuwa テーマ一式
 
 // --------------------------
 // 拡張アプリ設定
@@ -461,6 +463,21 @@ if (isset($theme_zip_file)) {
   $res = $zip->open($theme_zip_file);
 
   if ($res === true) {
+    // テーマ zip には配布形式が2種類ある。
+    //  - 従来形式（例: a-blogcms.jp 配布の square@ec.zip）: テーマ名ディレクトリが
+    //    最外層で、その中に bin/ themes/ 等が入っている（<name>/bin/, <name>/themes/）。
+    //  - bin/themes 直下形式（例: acms-develop, acms-utsuwa の GitHub Releases 配布物）:
+    //    bin/ themes/ が最外層で、その中にテーマ名ディレクトリが入っている
+    //    （bin/<name>/, themes/<name>/）。a-blog cms 本体の setup/bin・themes 構造を
+    //    そのまま zip 化したもの。
+    // 展開前にルート直下の "bin/" エントリの有無で形式を判定する。
+    $themeZipHasTopLevelBin = false;
+    for ($i = 0; $i < $zip->numFiles; $i++) {
+      if (preg_match('#^bin/#', $zip->getNameIndex($i))) {
+        $themeZipHasTopLevelBin = true;
+        break;
+      }
+    }
     $zip->extractTo($installPath);
     $zip->close();
   } else {
@@ -468,59 +485,71 @@ if (isset($theme_zip_file)) {
     exit;
   }
 
-  dir_shori("move", $theme_path . "/bin/" , $installPath . "/setup/bin/" );
-  dir_shori("move", $theme_path . "/themes/" , $installPath . "/themes/" );
+  if ($themeZipHasTopLevelBin) {
 
-  // テーマ選択の仕組みは a-blog cms のバージョンで異なる。
-  //  - 旧インストーラ (~3.2.26 以前): setup/tpl/install.html を持ち、テーマ同梱の install.html で
-  //    インストーラ画面ごと差し替え、サムネイルは setup/img/ に置いていた。
-  //  - 新インストーラ (3.2.27 以降の Twig ベース): 選択肢はテーマの bin 同梱 theme.yaml の
-  //    FS 走査で決まり、サムネイルも bin/<name>/ 内から解決する。bin の move だけで足りる。
-  // setup/tpl の有無で新旧を判定し、旧系のときだけ install.html / サムネイルを配置する
-  // （新系で存在しない setup/tpl へ rename すると警告になるため）。
-  if (is_dir($installPath . "/setup/tpl") && is_file($theme_path . "/tpl/install.html")) {
-    rename( $theme_path . "/tpl/install.html", $installPath . "/setup/tpl/install.html");
-    if (is_file($theme_path . "/img/" . $theme_name . ".jpg")) {
-      rename( $theme_path . "/img/" . $theme_name . ".jpg", $installPath . "/setup/img/" . $theme_name . ".jpg");
+    // bin/themes 直下形式: 展開直後に installPath/bin/<name>/ ができるので、
+    // これを setup/bin/ へ移動する。themes/<name>/ は展開時点で既に
+    // installPath/themes/<name>/ に配置済みのため追加の move は不要。
+    // plugins/・tpl/・img/ の同梱も想定しない形式のため対象外。
+    dir_shori("move", $installPath . "/bin/", $installPath . "/setup/bin/");
+    unlink($theme_zip_file);
+
+  } else {
+
+    dir_shori("move", $theme_path . "/bin/" , $installPath . "/setup/bin/" );
+    dir_shori("move", $theme_path . "/themes/" , $installPath . "/themes/" );
+
+    // テーマ選択の仕組みは a-blog cms のバージョンで異なる。
+    //  - 旧インストーラ (~3.2.26 以前): setup/tpl/install.html を持ち、テーマ同梱の install.html で
+    //    インストーラ画面ごと差し替え、サムネイルは setup/img/ に置いていた。
+    //  - 新インストーラ (3.2.27 以降の Twig ベース): 選択肢はテーマの bin 同梱 theme.yaml の
+    //    FS 走査で決まり、サムネイルも bin/<name>/ 内から解決する。bin の move だけで足りる。
+    // setup/tpl の有無で新旧を判定し、旧系のときだけ install.html / サムネイルを配置する
+    // （新系で存在しない setup/tpl へ rename すると警告になるため）。
+    if (is_dir($installPath . "/setup/tpl") && is_file($theme_path . "/tpl/install.html")) {
+      rename( $theme_path . "/tpl/install.html", $installPath . "/setup/tpl/install.html");
+      if (is_file($theme_path . "/img/" . $theme_name . ".jpg")) {
+        rename( $theme_path . "/img/" . $theme_name . ".jpg", $installPath . "/setup/img/" . $theme_name . ".jpg");
+      }
     }
-  }
 
-  $check_plugins = $theme_path."/plugins";
-  if (is_dir($check_plugins)) {
-      if ($handle = opendir($check_plugins)) {
-        while (($file = readdir($handle)) !== false) {
-          if ($file != "." && $file != "..") {
-            if (is_dir($check_plugins."/".$file)) {
-              dir_shori("move", $check_plugins."/".$file, $installPath."/extension/plugins/".$file);
+    $check_plugins = $theme_path."/plugins";
+    if (is_dir($check_plugins)) {
+        if ($handle = opendir($check_plugins)) {
+          while (($file = readdir($handle)) !== false) {
+            if ($file != "." && $file != "..") {
+              if (is_dir($check_plugins."/".$file)) {
+                dir_shori("move", $check_plugins."/".$file, $installPath."/extension/plugins/".$file);
+              }
             }
           }
+          closedir($handle);
         }
-        closedir($handle);
-      }
 
-      // 拡張アプリをインストール時 自動で HOOK_ENABLE を 1 にする
-      $configFile = $installPath."/config.server.php";
-      $config = file_get_contents($configFile);
-      $rows = explode("\n", $config);
-      $fp = fopen($configFile, "w");
-      if( $fp !== false ) {
-        foreach( $rows as $row ) {
-          if ( preg_match( '/HOOK_ENABLE/', $row ) ) {
-              $outdata = "define('HOOK_ENABLE', 1);\n";
-          } else {
-              $outdata = $row . "\n";
+        // 拡張アプリをインストール時 自動で HOOK_ENABLE を 1 にする
+        $configFile = $installPath."/config.server.php";
+        $config = file_get_contents($configFile);
+        $rows = explode("\n", $config);
+        $fp = fopen($configFile, "w");
+        if( $fp !== false ) {
+          foreach( $rows as $row ) {
+            if ( preg_match( '/HOOK_ENABLE/', $row ) ) {
+                $outdata = "define('HOOK_ENABLE', 1);\n";
+            } else {
+                $outdata = $row . "\n";
+            }
+            fwrite($fp, $outdata);
           }
-          fwrite($fp, $outdata);
+        } else {
+          echo "config.server.php fopen error";
         }
-      } else {
-        echo "config.server.php fopen error";
-      }
-      fclose($fp);
+        fclose($fp);
 
+    }
+
+    dir_shori("delete", $theme_name);
+    unlink($theme_zip_file);
   }
-
-  dir_shori("delete", $theme_name);
-  unlink($theme_zip_file);
 }
 
 // --------------------------
@@ -617,10 +646,10 @@ if (isset($theme_zip_file)) {
   $theme_name = explode("_",$theme_name_version[0]);
   echo "<h2>特製テーマをインストール</h2>";
 
+  // GitHub Releases の releases/latest/download/... のようにリダイレクトを
+  // 経由する URL でも正しく判定できるよう、最終的なステータスコードで確認する。
   $check = $theme_download_url.$theme_zip_file;
-  $http_header = get_headers($check);
-  $httt_hedaer0_code = explode(" ",$http_header[0]);
-  if ( $httt_hedaer0_code[1] != "200" ) {
+  if ( fetch_final_http_status($check) != "200" ) {
     $error_msg[] = "特製テーマ「".$theme_name[0]."」のダウンロード先の情報が間違っています。";
     echo "<ul><li><del>".$theme_name[0]."</del></li></ul>";
   } else {
@@ -639,11 +668,10 @@ foreach($plugins_array as $plugins_zip) {
   $plugins_name_version = explode(".",$plugins_zip);
   $plugins_name = explode("_",$plugins_name_version[0]);
 
+  // テーマ同様、リダイレクトを経由する URL でも正しく判定できるよう、
+  // 最終的なステータスコードで確認する。
   $check = $plugins_download_url.$plugins_zip;
-  $http_header = get_headers($check);
-  $httt_hedaer0_code = explode(" ",$http_header[0]);
-
-  if ( $httt_hedaer0_code[1] != "200" ) {
+  if ( fetch_final_http_status($check) != "200" ) {
     $error_msg[] = "拡張アプリ「".$plugins_name[0]."」のダウンロード先の情報が間違っています。";
     echo "<li><del>".$plugins_name[0]."</del></li>";
   } else {
@@ -783,6 +811,32 @@ function rename_bundled_htaccess_dir($dir)
     }
   }
   closedir($handle);
+}
+
+/**
+ * URL の最終的な HTTP ステータスコードを取得する。
+ * get_headers() はリダイレクトを辿った場合、各ホップのレスポンスヘッダーを
+ * すべて配列にフラットに含めて返す（例: GitHub Releases の
+ * releases/latest/download/... は 302 を 2 回経由する）ため、先頭要素だけを
+ * 見るとリダイレクト元の 302 等を誤って参照してしまう。ここでは配列中に
+ * 最後に出現したステータス行を最終ステータスとして扱う。
+ *
+ * @param string $url
+ * @return string|null 取得できない場合は null
+ */
+function fetch_final_http_status($url)
+{
+  $headers = @get_headers($url);
+  if ($headers === false) {
+    return null;
+  }
+  $status = null;
+  foreach ($headers as $line) {
+    if (preg_match('#^HTTP/\S+\s+(\d+)#', $line, $m)) {
+      $status = $m[1];
+    }
+  }
+  return $status;
 }
 
 /**
