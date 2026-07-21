@@ -490,9 +490,9 @@ if (isset($theme_zip_file)) {
     // bin/themes 直下形式: 展開直後に installPath/bin/<name>/ ができるので、
     // これを setup/bin/ へ移動する。themes/<name>/ は展開時点で既に
     // installPath/themes/<name>/ に配置済みのため追加の move は不要。
-    // plugins/・tpl/・img/ の同梱も想定しない形式のため対象外。
+    // plugins/ が同梱される場合はルート直下（installPath/plugins/）に来る。
     dir_shori("move", $installPath . "/bin/", $installPath . "/setup/bin/");
-    unlink($theme_zip_file);
+    $check_plugins = $installPath . "/plugins";
 
   } else {
 
@@ -514,42 +514,47 @@ if (isset($theme_zip_file)) {
     }
 
     $check_plugins = $theme_path."/plugins";
-    if (is_dir($check_plugins)) {
-        if ($handle = opendir($check_plugins)) {
-          while (($file = readdir($handle)) !== false) {
-            if ($file != "." && $file != "..") {
-              if (is_dir($check_plugins."/".$file)) {
-                dir_shori("move", $check_plugins."/".$file, $installPath."/extension/plugins/".$file);
-              }
-            }
-          }
-          closedir($handle);
-        }
-
-        // 拡張アプリをインストール時 自動で HOOK_ENABLE を 1 にする
-        $configFile = $installPath."/config.server.php";
-        $config = file_get_contents($configFile);
-        $rows = explode("\n", $config);
-        $fp = fopen($configFile, "w");
-        if( $fp !== false ) {
-          foreach( $rows as $row ) {
-            if ( preg_match( '/HOOK_ENABLE/', $row ) ) {
-                $outdata = "define('HOOK_ENABLE', 1);\n";
-            } else {
-                $outdata = $row . "\n";
-            }
-            fwrite($fp, $outdata);
-          }
-        } else {
-          echo "config.server.php fopen error";
-        }
-        fclose($fp);
-
-    }
-
-    dir_shori("delete", $theme_name);
-    unlink($theme_zip_file);
   }
+
+  // 拡張アプリ(plugins/)の同梱はテーマ zip の配布形式に関わらず起こりうるため、
+  // 形式ごとに解決した $check_plugins のパスを使って共通処理する。
+  if (is_dir($check_plugins)) {
+      if ($handle = opendir($check_plugins)) {
+        while (($file = readdir($handle)) !== false) {
+          if ($file != "." && $file != "..") {
+            if (is_dir($check_plugins."/".$file)) {
+              dir_shori("move", $check_plugins."/".$file, $installPath."/extension/plugins/".$file);
+            }
+          }
+        }
+        closedir($handle);
+      }
+
+      // 拡張アプリをインストール時 自動で HOOK_ENABLE を 1 にする
+      $configFile = $installPath."/config.server.php";
+      $config = file_get_contents($configFile);
+      $rows = explode("\n", $config);
+      $fp = fopen($configFile, "w");
+      if( $fp !== false ) {
+        foreach( $rows as $row ) {
+          if ( preg_match( '/HOOK_ENABLE/', $row ) ) {
+              $outdata = "define('HOOK_ENABLE', 1);\n";
+          } else {
+              $outdata = $row . "\n";
+          }
+          fwrite($fp, $outdata);
+        }
+      } else {
+        echo "config.server.php fopen error";
+      }
+      fclose($fp);
+
+  }
+
+  if (!$themeZipHasTopLevelBin) {
+    dir_shori("delete", $theme_name);
+  }
+  unlink($theme_zip_file);
 }
 
 // --------------------------
