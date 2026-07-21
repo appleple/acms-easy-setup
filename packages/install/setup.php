@@ -75,15 +75,6 @@ $plugins_download_url = "http://www.a-blogcms.jp/_download/";
 
 $error_msg = array();
 
-if (empty($ablogcmsVersion)) {
-  $check = download_version_check();
-  if ($check) {
-    $ablogcmsVersion = $check;
-  } else {
-    $error_msg[] = "web site version check error.";
-  }
-}
-
 $versionArray = explode(".", phpversion());
 $version = $versionArray[0] . "." . $versionArray[1];
 
@@ -117,83 +108,57 @@ if (is_file("./license.php")) {
 }
 
 // --------------------------
-// バージョンのチェック
+// バージョン・ダウンロードパッケージの取得（update.json 由来）
 // --------------------------
 
-// 3.0.x - 3.1.6 / 7.2 - 8.1
-// 3.1.7 - 3.1.13 / 7.3 - 8.1
-// 3.1.14 - 3.1.x / 7.3 - 8.3
-// 3.2.0 - / 8.1 - 8.4
+// 対応 PHP バージョンは a-blog cms のバージョン系列ごとに変わるため、手書きの
+// version_compare ラダーでは 3.3 系以降など将来のリリースに追従できない。
+// update.json (https://www.a-blogcms.jp/api/update.json) の packages[] から、
+// 実行中 PHP（CPI 環境では $cpi_php_version 側）に対応するパッケージを都度解決する。
+$acmsPackage = fetch_acms_package_info($ablogcmsVersion, true, $version);
 
-$pattern = '/^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z]+)\.(\d+))?$/';
-if (preg_match($pattern, $ablogcmsVersion, $matches)) {
+if ($acmsPackage === false) {
 
-    $major = (int) $matches[1];
-    $minor = (int) $matches[2];
-    $patch = (int) $matches[3];
+    $error_msg[] = "a-blog cms のバージョン情報の取得に失敗しました（update.json）。<br>手動で \$ablogcmsVersion にバージョンを指定するか、しばらく時間を置いて再度お試しください。";
+    $download = "";
+    $zipFile = "";
 
-    $semver = "{$major}.{$minor}.{$patch}";
+} else {
 
-    $minVersion = null;
-    $maxVersion = null;
+    $ablogcmsVersion = $acmsPackage['version'];
+    $zipFile = sprintf("./acms%s.zip", $ablogcmsVersion);
 
-    if (version_compare($semver, '3.0.0', '>=') && version_compare($semver, '3.1.7', '<')) {
-        $minVersion = '7.2';
-        $maxVersion = '8.1';
-    } elseif (version_compare($semver, '3.1.7', '>=') && version_compare($semver, '3.1.14', '<')) {
-        $minVersion = '7.3';
-        $maxVersion = '8.1';
-    } elseif (version_compare($semver, '3.1.14', '>=') && version_compare($semver, '3.2.0', '<')) {
-        $minVersion = '7.3';
-        $maxVersion = '8.3';
-    } elseif (version_compare($semver, '3.2.0', '>=')) {
-        $minVersion = '8.1';
-        $maxVersion = '8.4';
+    if ($acmsPackage['download'] === null) {
+        if ($cpi_check === 'secure') {
+            $error_msg[] = sprintf(
+                '%s の $cpi_php_version が a-blog cms Ver.%s に対応していません。設定を見直してください。',
+                $phpName,
+                $ablogcmsVersion
+            );
+        } else {
+            $error_msg[] = sprintf(
+                '現在の PHP バージョン（%s）は a-blog cms Ver.%s に対応していません。PHP のバージョンをご確認ください。',
+                phpversion(),
+                $ablogcmsVersion
+            );
+        }
+        $download = "";
     } else {
-        $error_msg[] = "インストールするバージョンの指定が間違っています。<br>インストールを中止します。";
-    }
+        $download = $acmsPackage['download'];
 
-    if ($minVersion !== null && $maxVersion !== null) {
-        if (
-            version_compare($version, $minVersion, '<') ||
-            version_compare($version, $maxVersion, '>')
-        ) {
-            if ($cpi_check === 'secure') {
-                $error_msg[] = sprintf(
-                    '%s の $cpi_php_version で PHP %s.x - %s.x を設定下さい。',
-                    $phpName,
-                    $minVersion,
-                    $maxVersion
-                );
-            } else {
-                $error_msg[] = sprintf(
-                    'PHP %s.x - %s.x をご利用ください。',
-                    $minVersion,
-                    $maxVersion
-                );
-            }
+        $http_header = @get_headers($download);
+        $httt_hedaer0_code = ($http_header !== false && isset($http_header[0])) ? explode(" ", $http_header[0]) : array();
+        if (!isset($httt_hedaer0_code[1]) || $httt_hedaer0_code[1] != "200") {
+            $error_msg[] = "a-blog cms のダウンロード先の確認に失敗しました。バージョン「".$ablogcmsVersion."」をご確認ください。";
         }
     }
 
-} else {
-    $error_msg[] = "インストールするバージョンの指定が間違っています。<br>インストールを中止します。";
-}
-
-# ダウンロード元 URL
-$download = sprintf("http://developer.a-blogcms.jp/_package/%s/acms%s.zip", $ablogcmsVersion, $ablogcmsVersion);
-
-$zipFile = sprintf("./acms%s.zip", $ablogcmsVersion);
-
-$http_header = get_headers($download);
-$httt_hedaer0_code = explode(" ",$http_header[0]);
-if ( $httt_hedaer0_code[1] != "200" ) {
-  $error_msg[] = "a-blog cms のバーンジョン設定「".$ablogcmsVersion."」が間違っています。";
 }
 
 $installPath = realpath('.');
 $http_host = explode(":", $_SERVER['HTTP_HOST']);
 
-if (is_file($installPath."/".$zipFile) || is_file($installPath."/".$zipFile)) {
+if ($zipFile !== "" && is_file($installPath."/".$zipFile)) {
   $_POST['action'] = "";
 }
 
@@ -259,20 +224,21 @@ if ($input_action == "セットアップ開始") {
 
 // --------------------------
 
-# 解凍後の全体フォルダ名
-$zipAfterDirName = sprintf("acms%s", $ablogcmsVersion);
+# 解凍後の a-blog cms のディレクトリ（update.json の root_dir をそのまま利用する。
+# "acms{version}/ablogcms" のハードコード組み立てをやめ、パッケージ構成の変化に追従する）
+$ablogcmsDir = $installPath . "/" . $acmsPackage['root_dir'] . "/";
+
+# root_dir の先頭セグメント（例 "acms3.2.26"）＝解凍後にできる一時ディレクトリ名。
+# 処理完了後に dir_shori("delete", ...) で丸ごと削除する対象。
+$rootDirParts = explode("/", $acmsPackage['root_dir']);
+$zipAfterDirName = $rootDirParts[0];
 
 $ablogcmsVersionNum = str_replace(".", "", $ablogcmsVersion);
-
-# 解凍後の a-blog cms のフォルダ名
-$cmsDirName = "ablogcms";
-
-$ablogcmsDir = $installPath . "/" . $zipAfterDirName . "/" . $cmsDirName . "/";
 
 $mdHi = date("mdHi");
 
 // --------------------------
-// Mac & Windows & DDEV ローカルDB設定 
+// Mac & Windows & DDEV ローカルDB設定
 // --------------------------
 
 if (getenv('IS_DDEV_PROJECT') == 'true') {
@@ -282,7 +248,7 @@ if (getenv('IS_DDEV_PROJECT') == 'true') {
   $dbCreate   = '';
   $dbUser     = 'db';
   $dbPass     = 'db';
-	
+
 } elseif ($http_host[0] == 'localhost') {
 
   $dbHost     = '127.0.0.1';
@@ -393,15 +359,12 @@ rename($installPath . "/editorconfig.txt", $installPath . '/.editorconfig');
 rename($installPath . "/env.txt", $installPath . '/.env');
 rename($installPath . "/gitignore.txt", $installPath . '/.gitignore');
 
-rename($installPath . "/archives/htaccess.txt", $installPath . '/archives/.htaccess');
-rename($installPath . "/media/htaccess.txt", $installPath . '/media/.htaccess');
-rename($installPath . "/storage/htaccess.txt", $installPath . '/storage/.htaccess');
-rename($installPath . "/private/htaccess.txt", $installPath . '/private/.htaccess');
-rename($installPath . "/cache/htaccess.txt", $installPath . '/cache/.htaccess');
-rename($installPath . "/themes/htaccess.txt", $installPath . '/themes/.htaccess');
-if (is_file($installPath . "/archives_rev/htaccess.txt")) {
-  rename($installPath . "/archives_rev/htaccess.txt", $installPath . '/archives_rev/.htaccess');
-}
+// root 以外に同梱される htaccess.txt を .htaccess へ一括リネームする。
+// archives/media/storage/private/cache/themes/archives_rev のようにディレクトリを
+// ハードコード列挙すると cron や extension（3.2 系で追加された同梱物）が漏れるため、
+// 実際に展開されたファイルを走査する方式に変更し、将来の増減にも自動追従させる。
+// $zipAfterDirName は解凍後の一時ディレクトリ（後で削除される）なので対象外にする。
+rename_bundled_htaccess($installPath, array($zipAfterDirName));
 
 // --------------------------
 // DB 初期設定
@@ -508,8 +471,19 @@ if (isset($theme_zip_file)) {
   dir_shori("move", $theme_path . "/bin/" , $installPath . "/setup/bin/" );
   dir_shori("move", $theme_path . "/themes/" , $installPath . "/themes/" );
 
-  rename( $theme_path . "/tpl/install.html", $installPath . "/setup/tpl/install.html");
-  rename( $theme_path . "/img/" . $theme_name . ".jpg", $installPath . "/setup/img/" . $theme_name . ".jpg");
+  // テーマ選択の仕組みは a-blog cms のバージョンで異なる。
+  //  - 旧インストーラ (~3.2.26 以前): setup/tpl/install.html を持ち、テーマ同梱の install.html で
+  //    インストーラ画面ごと差し替え、サムネイルは setup/img/ に置いていた。
+  //  - 新インストーラ (3.2.27 以降の Twig ベース): 選択肢はテーマの bin 同梱 theme.yaml の
+  //    FS 走査で決まり、サムネイルも bin/<name>/ 内から解決する。bin の move だけで足りる。
+  // setup/tpl の有無で新旧を判定し、旧系のときだけ install.html / サムネイルを配置する
+  // （新系で存在しない setup/tpl へ rename すると警告になるため）。
+  if (is_dir($installPath . "/setup/tpl") && is_file($theme_path . "/tpl/install.html")) {
+    rename( $theme_path . "/tpl/install.html", $installPath . "/setup/tpl/install.html");
+    if (is_file($theme_path . "/img/" . $theme_name . ".jpg")) {
+      rename( $theme_path . "/img/" . $theme_name . ".jpg", $installPath . "/setup/img/" . $theme_name . ".jpg");
+    }
+  }
 
   $check_plugins = $theme_path."/plugins";
   if (is_dir($check_plugins)) {
@@ -753,20 +727,202 @@ function dir_shori($shori, $nowDir, $newDir = "")
   return true;
 }
 
+// --------------------------
+// htaccess.txt を .htaccess へ一括リネーム
+// --------------------------
 /**
- * Version 3.2.x のチェック用
- * 正常にチェックできない場合には 空 でかえす。
+ * $baseDir 配下（$baseDir 自身の直下ファイルは除く）を再帰的に走査し、
+ * 同梱されている htaccess.txt をすべて .htaccess へリネームする。
+ * root の htaccess.txt は別途マージ処理があるため、この関数は $baseDir の
+ * サブディレクトリのみを対象にする（$baseDir 直下は呼び出し側で処理済みの前提）。
+ *
+ * @param string $baseDir     走査を開始するディレクトリ（通常は installPath）
+ * @param string[] $excludeDirs $baseDir 直下で走査から除外するディレクトリ名（一時ディレクトリ等）
  */
-function download_version_check()
+function rename_bundled_htaccess($baseDir, array $excludeDirs = array())
 {
-  $options['ssl']['verify_peer'] = false;
-  $options['ssl']['verify_peer_name'] = false;
-  $html = file_get_contents('https://developer.a-blogcms.jp/download/', false, stream_context_create($options));
-  preg_match('/<h1 class="entry-title" id="(.*)"><a href="https:\/\/developer.a-blogcms.jp\/download\/package\/3.2.(.*).html">(.*)<\/a><\/h1>/', $html, $matches);
-
-  if (is_numeric($matches[2])) {
-    return "3.2." . $matches[2];
-  } else {
+  if (!is_dir($baseDir) || !($handle = opendir($baseDir))) {
     return;
   }
+  while (($entry = readdir($handle)) !== false) {
+    if ($entry === "." || $entry === "..") {
+      continue;
+    }
+    $path = $baseDir . "/" . $entry;
+    if (is_dir($path) && !in_array($entry, $excludeDirs, true)) {
+      rename_bundled_htaccess_dir($path);
+    }
+  }
+  closedir($handle);
+}
+
+/**
+ * $dir 自身に htaccess.txt があれば .htaccess へリネームし、サブディレクトリも再帰的に処理する。
+ */
+function rename_bundled_htaccess_dir($dir)
+{
+  $htaccessTxt = $dir . "/htaccess.txt";
+  if (is_file($htaccessTxt)) {
+    if (is_file($dir . "/.htaccess")) {
+      // 既に .htaccess がある場合、htaccess.txt は不要な残骸なので削除する
+      unlink($htaccessTxt);
+    } else {
+      rename($htaccessTxt, $dir . "/.htaccess");
+    }
+  }
+  if (!($handle = opendir($dir))) {
+    return;
+  }
+  while (($entry = readdir($handle)) !== false) {
+    if ($entry === "." || $entry === "..") {
+      continue;
+    }
+    $path = $dir . "/" . $entry;
+    if (is_dir($path)) {
+      rename_bundled_htaccess_dir($path);
+    }
+  }
+  closedir($handle);
+}
+
+/**
+ * update.json (https://www.a-blogcms.jp/api/update.json) から
+ * 対象バージョンとダウンロードパッケージ情報を取得する。
+ *
+ * @param string $wantVersion        指定バージョン（空文字なら最新版 = semver 最大を採用）
+ * @param bool   $forInstall         true: 新規インストール用フルパッケージを解決する。
+ *                                   update.json の packages[].download / root_dir は
+ *                                   アップデート用（"acmsX.Y.Z_updateNx.zip" 命名）のみを
+ *                                   提供しているため、インストール用途では "_updateNx" を
+ *                                   取り除いた URL / ディレクトリ名に変換する
+ *                                   （実サーバー上に同名のフルパッケージが存在することを確認済み）。
+ * @param string $phpVersionForCheck PHP バージョン適合チェックに使う値
+ *                                   （CPI 環境では $cpi_php_version 側の値を渡す）
+ *
+ * @return array{version: string, download: string|null, root_dir: string|null}|false
+ *   失敗時は false。成功時は 'download'/'root_dir' に対応パッケージが無い場合 null が入る。
+ */
+function fetch_acms_package_info($wantVersion, $forInstall, $phpVersionForCheck)
+{
+  // "8.1" のような major.minor のみの表記は、桁数の異なる "8.1.0" との
+  // version_compare で意図せず「未満」と判定されてしまう（PHP の既知の挙動）ため、
+  // patch 部分を 0 で補って正規化してから比較する。
+  $phpVersionParts = explode('.', $phpVersionForCheck);
+  while (count($phpVersionParts) < 3) {
+    $phpVersionParts[] = '0';
+  }
+  $phpVersionForCheck = implode('.', $phpVersionParts);
+
+  $options = array();
+  $options['ssl']['verify_peer'] = false;
+  $options['ssl']['verify_peer_name'] = false;
+
+  $json = @file_get_contents('https://www.a-blogcms.jp/api/update.json', false, stream_context_create($options));
+  if ($json === false) {
+    return false;
+  }
+
+  $data = json_decode($json, true);
+  if (!is_array($data) || empty($data['versions']) || !is_array($data['versions'])) {
+    return false;
+  }
+
+  $target = null;
+  foreach ($data['versions'] as $v) {
+    if (!isset($v['version'])) {
+      continue;
+    }
+    if ($wantVersion !== '') {
+      if ($v['version'] === $wantVersion) {
+        $target = $v;
+        break;
+      }
+    } elseif ($target === null || version_compare($v['version'], $target['version'], '>')) {
+      $target = $v;
+    }
+  }
+
+  // update.json は各メジャー.マイナー系列の最新パッチのみを収録しており、
+  // 過去パッチ（例: 3.2.26 系列で 3.2.25 を指定した場合）は一覧に無い。
+  // 完全一致が見つからない場合は、同じ系列の最新パッケージ情報
+  // （PHP 対応レンジ・URL 命名パターン）を流用し、バージョン文字列部分だけ
+  // 指定値に差し替えて推測する（実在するとは限らないため、呼び出し側で
+  // 実 URL の存在確認を行うこと）。
+  $fallbackFromVersion = null;
+  if ($wantVersion !== '' && $target === null) {
+    $wantParts = explode('.', $wantVersion);
+    if (count($wantParts) >= 2) {
+      $wantMajorMinor = $wantParts[0] . '.' . $wantParts[1];
+      foreach ($data['versions'] as $v) {
+        if (!isset($v['version'])) {
+          continue;
+        }
+        $vParts = explode('.', $v['version']);
+        if (count($vParts) < 2 || ($vParts[0] . '.' . $vParts[1]) !== $wantMajorMinor) {
+          continue;
+        }
+        if ($target === null || version_compare($v['version'], $target['version'], '>')) {
+          $target = $v;
+        }
+      }
+      if ($target !== null) {
+        $fallbackFromVersion = $target['version'];
+      }
+    }
+  }
+
+  if ($target === null) {
+    return false;
+  }
+
+  $result = array(
+    'version'  => ($fallbackFromVersion !== null) ? $wantVersion : $target['version'],
+    'download' => null,
+    'root_dir' => null,
+  );
+
+  if (empty($target['packages']) || !is_array($target['packages'])) {
+    return $result;
+  }
+
+  foreach ($target['packages'] as $pkg) {
+    if (!isset($pkg['php_min_version'], $pkg['php_max_version'], $pkg['download'], $pkg['root_dir'])) {
+      continue;
+    }
+
+    // "8.4.x" のような表記を上限比較できる値に正規化する
+    $max = preg_replace('/\.x$/', '.999', $pkg['php_max_version']);
+
+    if (
+      version_compare($phpVersionForCheck, $pkg['php_min_version'], '>=') &&
+      version_compare($phpVersionForCheck, $max, '<=')
+    ) {
+      $download = $pkg['download'];
+      $rootDir  = $pkg['root_dir'];
+
+      if ($fallbackFromVersion !== null) {
+        // 同系列の最新バージョン文字列（例 "3.2.26"）を指定バージョン（例 "3.2.25"）へ
+        // 差し替える。実在するとは限らないため、呼び出し側で実 URL の存在確認を行うこと。
+        $download = str_replace($fallbackFromVersion, $wantVersion, $download);
+        $rootDir  = str_replace($fallbackFromVersion, $wantVersion, $rootDir);
+      }
+
+      if ($forInstall) {
+        // update.json はアップデート用パッケージ（acmsX.Y.Z_updateNx.zip）のみを提供するため、
+        // 新規インストール用フルパッケージ（acmsX.Y.Z.zip、setup/ 一式を含む）のパスを
+        // 命名規則から導出する（"_updateNx" 部分を除去）。
+        $download = preg_replace('/_update\d+x(?=\.zip$)/', '', $download);
+        $rootDir  = preg_replace('#_update\d+x(?=/|$)#', '', $rootDir);
+      }
+
+      // HTTP は HTTPS に寄せる
+      $download = preg_replace('#^http://#', 'https://', $download);
+
+      $result['download'] = $download;
+      $result['root_dir'] = $rootDir;
+      break;
+    }
+  }
+
+  return $result;
 }
