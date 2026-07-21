@@ -19,7 +19,7 @@
   },
   "homepage": "https://github.com/appleple/acms-easy-setup#readme",
   "devDependencies": {
-    "archiver": "^7.0.1",
+    "archiver": "^8.0.0",
     "fs-extra": "^2.1.2"
   }
 }

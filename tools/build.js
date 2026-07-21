@@ -1,12 +1,12 @@
 const fs = require('fs-extra');
-const archiver = require('archiver');
+const { ZipArchive } = require('archiver');
 const path = require('path');
 
 const root = path.resolve(__dirname, '..');
 
 const zip = (src, dist) => {
   return new Promise((resolve, reject) => {
-    const archive = archiver.create('zip', {});
+    const archive = new ZipArchive({});
     const output = fs.createWriteStream(dist);
 
     output.on('close', () => {
