@@ -54,6 +54,27 @@ jobs:
       - name: Coverage (setup.php)
         run: php -d pcov.enabled=1 -d pcov.directory=. tests/run.php install --coverage=90
 
+  # リリース用 zip のビルドが通ることを確認する（archiver / fs-extra などの依存更新の検証）
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: '.node-version'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - name: zip の中身を確認
+        run: |
+          unzip -p build/update.zip update.php | php -l
+          unzip -p build/install.zip setup.php | php -l
+
   # Dependabot の更新 PR で GitHub の auto-merge を有効にする。
   # develop/v3 のブランチ保護で必須にしているチェック（test 各 PHP・coverage）がすべて
   # 成功した時点で、GitHub が自動でマージする（失敗すればマージされない）。
