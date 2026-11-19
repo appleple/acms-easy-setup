@@ -1,4 +1,4 @@
-const fs = require('fs-extra');
+const fs = require('fs');
 const { ZipArchive } = require('archiver');
 const path = require('path');
 
@@ -22,7 +22,7 @@ const zip = (src, dist) => {
 
 (async () => {
   const buildDir = path.join(root, 'build');
-  fs.mkdirsSync(buildDir);
+  fs.mkdirSync(buildDir, { recursive: true });
 
   await zip(path.join(root, 'packages', 'install'), path.join(buildDir, 'install.zip'));
   await zip(path.join(root, 'packages', 'update'), path.join(buildDir, 'update.zip'));

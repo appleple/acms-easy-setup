@@ -54,7 +54,7 @@ jobs:
       - name: Coverage (setup.php)
         run: php -d pcov.enabled=1 -d pcov.directory=. tests/run.php install --coverage=90
 
-  # リリース用 zip のビルドが通ることを確認する（archiver / fs-extra などの依存更新の検証）
+  # リリース用 zip のビルドが通ることを確認する（archiver などの依存更新の検証）
   build:
     runs-on: ubuntu-latest
 
