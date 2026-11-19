@@ -54,12 +54,11 @@ jobs:
       - name: Coverage (setup.php)
         run: php -d pcov.enabled=1 -d pcov.directory=. tests/run.php install --coverage=90
 
-  # Dependabot の更新 PR は、上のテストとカバレッジがすべて成功した後に自動でマージする。
-  # GitHub 標準の auto-merge は「必須チェック付きのブランチ保護」が前提で、無いと CI を待たずに
-  # 即マージされるため使わず、needs でこのワークフロー自身の成功を待ってからマージする。
+  # Dependabot の更新 PR で GitHub の auto-merge を有効にする。
+  # develop/v3 のブランチ保護で必須にしているチェック（test 各 PHP・coverage）がすべて
+  # 成功した時点で、GitHub が自動でマージする（失敗すればマージされない）。
   # major 更新は破壊的変更を含みうるので対象外（手動で確認する）。
   dependabot-automerge:
-    needs: [test, coverage]
     if: github.event_name == 'pull_request' && github.actor == 'dependabot[bot]'
     runs-on: ubuntu-latest
     permissions:
@@ -72,9 +71,9 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Merge (minor / patch only)
+      - name: Enable auto-merge (minor / patch only)
         if: steps.metadata.outputs.update-type != 'version-update:semver-major'
-        run: gh pr merge --squash --delete-branch "$PR_URL"
+        run: gh pr merge --auto --squash "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
