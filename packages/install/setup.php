@@ -75,110 +75,202 @@ $plugins_download_url = "http://www.a-blogcms.jp/_download/";
 
 // --------------------------
 
-$error_msg = array();
-
-$versionArray = explode(".", phpversion());
-$version = $versionArray[0] . "." . $versionArray[1];
-
-$server = gethostbyaddr($_SERVER['SERVER_ADDR']);
-$cpi_check_array = explode( ".", $server );
-$cpi_check = "";
-
-if (is_array($cpi_check_array) && count($cpi_check_array) > 1) {
-  $cpi_check = $cpi_check_array[1];
+// テストから関数だけを読み込めるよう、定数が定義されている場合は実行しない。
+// @coverage-ignore-start
+if (!defined('ACMS_EASY_SETUP_NO_RUN')) {
+  acms_setup_main(array(
+    'ablogcmsVersion'    => $ablogcmsVersion,
+    'dbHost'             => $dbHost,
+    'dbName'             => $dbName,
+    'dbCreate'           => $dbCreate,
+    'dbUser'             => $dbUser,
+    'dbPass'             => $dbPass,
+    'cpiPhpVersion'      => $cpi_php_version,
+    'themeDownloadUrl'   => $theme_download_url,
+    'themeZipFile'       => isset($theme_zip_file) ? $theme_zip_file : null,
+    'pluginsDownloadUrl' => $plugins_download_url,
+    'pluginsZipFile'     => isset($plugins_zip_file) ? $plugins_zip_file : null,
+  ));
+  exit;
 }
-if (strpos($_SERVER['HTTP_HOST'],'smartrelease') !== false) {
-	$cpi_check = "secure";
-}
+// @coverage-ignore-end
 
-if ($cpi_check == "secure") {
-  if ($cpi_php_version) {
-    $moto_version = $version;
-    $version = $cpi_php_version;
+// --------------------------------------------------
+// エントリポイント（副作用はここに集約する）
+// --------------------------------------------------
+
+// @coverage-ignore-start
+/**
+ * 実行環境とリクエストを読み取り、ページを出力する。
+ * 判定・描画・ファイル操作はすべて下の関数に切り出してあり、ここは入出力の接続のみ。
+ *
+ * @param array $settings 先頭の設定値（acms_setup_page の $c にそのまま渡す）
+ */
+function acms_setup_main(array $settings)
+{
+  $c = $settings;
+  $c['phpversion']  = phpversion();
+  $c['serverHost']  = gethostbyaddr($_SERVER['SERVER_ADDR']);
+  $c['httpHost']    = $_SERVER['HTTP_HOST'];
+  $c['phpName']     = basename($_SERVER['PHP_SELF']);
+  $c['installPath'] = realpath('.');
+  $c['action']      = filter_input(INPUT_POST, "action");
+  $c['isDdev']      = getenv('IS_DDEV_PROJECT') == 'true';
+  $c['cfgFilePath'] = (string) get_cfg_var('cfg_file_path');
+  $c['mdHi']        = date("mdHi");
+  $c['mampHttpdConf'] = '/Applications/MAMP/conf/apache/httpd.conf';
+
+  echo acms_setup_page($c);
+}
+// @coverage-ignore-end
+
+// --------------------------------------------------
+// ページ組み立て
+// --------------------------------------------------
+
+/**
+ * リクエスト 1 回分の処理を行い、出力する HTML を返す。
+ *
+ * @param array $c 設定値（acms_setup_main の $settings）と実行環境
+ *                 （phpversion, serverHost, httpHost, phpName, installPath, action, isDdev,
+ *                  cfgFilePath, mdHi, mampHttpdConf）。
+ *                  テスト用に fetchPackage / httpStatus(callable) を差し替えられる。
+ * @return string
+ */
+function acms_setup_page(array $c)
+{
+  $fetch = isset($c['fetchPackage']) ? $c['fetchPackage'] : 'fetch_acms_package_info';
+  $httpStatus = isset($c['httpStatus']) ? $c['httpStatus'] : 'fetch_final_http_status';
+
+  $errors = array();
+
+  $versionArray = explode(".", $c['phpversion']);
+  $phpVersion = $versionArray[0] . "." . $versionArray[1];
+
+  $cpiCheck = acms_detect_cpi($c['serverHost'], $c['httpHost']);
+  $cpiHtaccessPhp = '';
+  if ($cpiCheck == "secure") {
+    if ($c['cpiPhpVersion']) {
+      $phpVersion = $c['cpiPhpVersion'];
+    }
+    $cpiHtaccessPhp = str_replace('.', '', $phpVersion);
   }
-  $cpi_htaccess_php = str_replace('.','', $version);
-}
 
-$phpName = basename($_SERVER['PHP_SELF']);
+  if (is_file($c['installPath'] . "/license.php")) {
+    $errors[] = "インストール先に license.php が見つかりました。<br>インストールを中止します。";
+  }
 
-// --------------------------
-// 動作チェック
-// --------------------------
+  // 対応 PHP の判定は acms_known_php_range() の表に一本化し、update.json は
+  // バージョンとダウンロード先の解決だけに使う（CPI 環境では $cpi_php_version 側で判定）。
+  $acmsPackage = call_user_func($fetch, $c['ablogcmsVersion'], true, $phpVersion);
+  $ablogcmsVersion = $c['ablogcmsVersion'];
+  $zipFile = "";
+  $download = "";
 
-if (is_file("./license.php")) {
-  $error_msg[] = "インストール先に license.php が見つかりました。<br>インストールを中止します。";
-}
-
-// --------------------------
-// バージョン・ダウンロードパッケージの取得（update.json 由来）
-// --------------------------
-
-// 対応 PHP バージョンは a-blog cms のバージョン系列ごとに変わるため、手書きの
-// version_compare ラダーでは 3.3 系以降など将来のリリースに追従できない。
-// update.json (https://www.a-blogcms.jp/api/update.json) の packages[] から、
-// 実行中 PHP（CPI 環境では $cpi_php_version 側）に対応するパッケージを都度解決する。
-$acmsPackage = fetch_acms_package_info($ablogcmsVersion, true, $version);
-
-if ($acmsPackage === false) {
-
-    $error_msg[] = "a-blog cms のバージョン情報の取得に失敗しました（update.json）。<br>手動で \$ablogcmsVersion にバージョンを指定するか、しばらく時間を置いて再度お試しください。";
-    $download = "";
-    $zipFile = "";
-
-} else {
-
+  if ($acmsPackage === false) {
+    $errors[] = "a-blog cms のバージョン情報の取得に失敗しました（update.json）。<br>手動で \$ablogcmsVersion にバージョンを指定するか、しばらく時間を置いて再度お試しください。";
+  } else {
     $ablogcmsVersion = $acmsPackage['version'];
     $zipFile = sprintf("./acms%s.zip", $ablogcmsVersion);
 
     if ($acmsPackage['download'] === null) {
-        if ($cpi_check === 'secure') {
-            $error_msg[] = sprintf(
-                '%s の $cpi_php_version が a-blog cms Ver.%s に対応していません。設定を見直してください。',
-                $phpName,
-                $ablogcmsVersion
-            );
-        } else {
-            $error_msg[] = sprintf(
-                '現在の PHP バージョン（%s）は a-blog cms Ver.%s に対応していません。PHP のバージョンをご確認ください。',
-                phpversion(),
-                $ablogcmsVersion
-            );
-        }
-        $download = "";
+      if ($cpiCheck === 'secure') {
+        $errors[] = sprintf(
+          '%s の $cpi_php_version が a-blog cms Ver.%s に対応していません。設定を見直してください。',
+          $c['phpName'],
+          $ablogcmsVersion
+        );
+      } else {
+        $errors[] = sprintf(
+          '現在の PHP バージョン（%s）は a-blog cms Ver.%s に対応していません。PHP のバージョンをご確認ください。',
+          $c['phpversion'],
+          $ablogcmsVersion
+        );
+      }
     } else {
-        $download = $acmsPackage['download'];
-
-        $http_header = @get_headers($download);
-        $httt_hedaer0_code = ($http_header !== false && isset($http_header[0])) ? explode(" ", $http_header[0]) : array();
-        if (!isset($httt_hedaer0_code[1]) || $httt_hedaer0_code[1] != "200") {
-            $error_msg[] = "a-blog cms のダウンロード先の確認に失敗しました。バージョン「".$ablogcmsVersion."」をご確認ください。";
-        }
-    }
-
-}
-
-$installPath = realpath('.');
-$http_host = explode(":", $_SERVER['HTTP_HOST']);
-
-if ($zipFile !== "" && is_file($installPath."/".$zipFile)) {
-  $_POST['action'] = "";
-}
-
-$mamp_rewrite_module_off = "";
-$mamp_check = get_cfg_var('cfg_file_path');
-if (strpos($mamp_check, 'MAMP') !== false) {
-  $httpdconf = '/Applications/MAMP/conf/apache/httpd.conf';
-  $fileContents = file($httpdconf);
-  foreach ($fileContents as $key => $line) {
-    if (strpos($line, 'rewrite_module') !== false) {
-      if (preg_match('/^\s*#/', $line)) {
-        $mamp_rewrite_module_off = "<h2>MAMP httpd.confチェック</h2><p>rewrite_module の行がコメントアウトされており、このままでは a-blog cms が動作しません。<br>httpd.conf を修正し、バックアップとして httpd.conf.backup を生成します。";
+      $download = $acmsPackage['download'];
+      if ((string) call_user_func($httpStatus, $download) !== "200") {
+        $errors[] = "a-blog cms のダウンロード先の確認に失敗しました。バージョン「" . $ablogcmsVersion . "」をご確認ください。";
       }
     }
   }
+
+  $action = $c['action'];
+  if ($zipFile !== "" && is_file($c['installPath'] . "/" . $zipFile)) {
+    $action = ""; // 前回のダウンロード済み zip が残っている場合は、再実行させない
+  }
+
+  $out = acms_render_setup_head($ablogcmsVersion);
+
+  // エラーがある場合（license.php 検出・未対応 PHP など）は、実行ボタン押下でも処理しない。
+  if ($action == "セットアップ開始" && count($errors) === 0) {
+    $c['ablogcmsVersion'] = $ablogcmsVersion;
+    return $out . acms_setup_run($c, $acmsPackage, $download, $zipFile, $cpiCheck, $cpiHtaccessPhp);
+  }
+
+  return $out . acms_render_setup_form($c, $errors, $phpVersion, $cpiCheck, $httpStatus);
 }
 
-?>
+/**
+ * CPI（SV-Basic 等）環境かどうかを判定する。
+ *
+ * @param string $serverHost gethostbyaddr(SERVER_ADDR) の結果
+ * @param string $httpHost   HTTP_HOST
+ * @return string "secure" なら CPI。それ以外はホスト名の第 2 ラベル（無ければ空文字）
+ */
+function acms_detect_cpi($serverHost, $httpHost)
+{
+  $check = "";
+  $labels = explode(".", $serverHost);
+  if (count($labels) > 1) {
+    $check = $labels[1];
+  }
+  if (strpos($httpHost, 'smartrelease') !== false) {
+    $check = "secure";
+  }
+  return $check;
+}
+
+/**
+ * ローカル開発環境（DDEV / localhost / MAMP）向けに DB 初期値を上書きする。
+ *
+ * @param array $c 設定値（dbHost 等）と環境（isDdev, httpHost, cfgFilePath, mdHi, ablogcmsVersion）
+ * @return array{dbHost: string, dbName: string, dbCreate: string, dbUser: string, dbPass: string}
+ */
+function acms_resolve_db_defaults(array $c)
+{
+  $db = array(
+    'dbHost'   => $c['dbHost'],
+    'dbName'   => $c['dbName'],
+    'dbCreate' => $c['dbCreate'],
+    'dbUser'   => $c['dbUser'],
+    'dbPass'   => $c['dbPass'],
+  );
+
+  $hostParts = explode(":", $c['httpHost']);
+
+  if ($c['isDdev']) {
+    return array('dbHost' => 'db', 'dbName' => 'db', 'dbCreate' => '', 'dbUser' => 'db', 'dbPass' => 'db');
+  }
+
+  if ($hostParts[0] == 'localhost') {
+    $db['dbHost'] = '127.0.0.1';
+    $db['dbName'] = 'DBacms_' . str_replace(".", "", $c['ablogcmsVersion']) . "_" . $c['mdHi'];
+    $db['dbCreate'] = 'checked';
+    $db['dbUser'] = 'root';
+    $db['dbPass'] = (strpos($c['cfgFilePath'], 'MAMP') !== false) ? 'root' : '';
+  }
+  return $db;
+}
+
+// --------------------------------------------------
+// 描画（HTML 文字列を返すだけ）
+// --------------------------------------------------
+
+function acms_render_setup_head($ablogcmsVersion)
+{
+  $html = <<<'HTML'
+
 <!DOCTYPE html>
     <html lang="ja">
     <head>
@@ -213,291 +305,383 @@ if (strpos($mamp_check, 'MAMP') !== false) {
     </script>
     </head>
     <body>
-    <h1>a-blog cms Ver. <?php echo $ablogcmsVersion; ?> 簡単セットアップ</h1>
-<?php
 
-// --------------------------
-// 現在の a-blog cms のバージョンをチェック
-// --------------------------
-
-$input_action = filter_input(INPUT_POST, "action");
-
-if ($input_action == "セットアップ開始") {
-
-// --------------------------
-
-# 解凍後の a-blog cms のディレクトリ（update.json の root_dir をそのまま利用する。
-# "acms{version}/ablogcms" のハードコード組み立てをやめ、パッケージ構成の変化に追従する）
-$ablogcmsDir = $installPath . "/" . $acmsPackage['root_dir'] . "/";
-
-# root_dir の先頭セグメント（例 "acms3.2.26"）＝解凍後にできる一時ディレクトリ名。
-# 処理完了後に dir_shori("delete", ...) で丸ごと削除する対象。
-$rootDirParts = explode("/", $acmsPackage['root_dir']);
-$zipAfterDirName = $rootDirParts[0];
-
-$ablogcmsVersionNum = str_replace(".", "", $ablogcmsVersion);
-
-$mdHi = date("mdHi");
-
-// --------------------------
-// Mac & Windows & DDEV ローカルDB設定
-// --------------------------
-
-if (getenv('IS_DDEV_PROJECT') == 'true') {
-
-  $dbHost     = 'db';
-  $dbName     = 'db';
-  $dbCreate   = '';
-  $dbUser     = 'db';
-  $dbPass     = 'db';
-
-} elseif ($http_host[0] == 'localhost') {
-
-  $dbHost     = '127.0.0.1';
-  $dbName     = 'DBacms_' . $ablogcmsVersionNum . "_" . $mdHi;
-  $dbCreate   = 'checked';
-  $dbUser     = 'root';
-  $dbPass     = '';
-
-  $mamp_check = get_cfg_var('cfg_file_path');
-  if (strpos($mamp_check, 'MAMP') !== false) {
-    $dbPass     = 'root';
-  }
+HTML;
+  return $html . "    <h1>a-blog cms Ver. " . $ablogcmsVersion . " 簡単セットアップ</h1>\n";
 }
-// --------------------------
-// a-blog cms ファイルをダウンロード
-// --------------------------
 
-$fp = fopen($download, "rb");
-if ($fp !== FALSE) {
-  $output = fopen($zipFile, "wb");
-  if ($output === FALSE) {
-    echo 'a-blog cms file open Error ! : ' . $zipFile;
-    fclose($fp);
-    exit;
+/**
+ * 実行前の確認画面（PHP バージョン・特製テーマ・拡張アプリの確認とエラー表示）。
+ *
+ * @param array    $c
+ * @param string[] $errors      ここまでに見つかったエラー
+ * @param string   $phpVersion  判定に使った PHP バージョン（CPI では $cpi_php_version）
+ * @param string   $cpiCheck
+ * @param callable $httpStatus  URL の最終 HTTP ステータスを返す関数
+ */
+function acms_render_setup_form(array $c, array $errors, $phpVersion, $cpiCheck, $httpStatus)
+{
+  $isCpi = ($c['cpiPhpVersion'] && $cpiCheck == "secure");
+
+  $out = "\n  <p>a-blog cms のパッケージのダウンロードとファイルのリネーム作業を行います。</p>\n\n  <h2>PHP バージョンチェック</h2>\n\n  <ul><li>Ver. ";
+  if ($isCpi) {
+    $out .= "<del>";
   }
+  $out .= $c['phpversion'];
+  if ($isCpi) {
+    $out .= "</del> → " . $phpVersion . "(変更)";
+  }
+  $out .= "</li></ul>\n";
 
-  while (!feof($fp)) {
-    $buffer = fread($fp, 4096);
-    if ($buffer !== FALSE) {
-      fwrite($output, $buffer);
+  if (isset($c['themeZipFile'])) {
+    $themeName = explode("_", explode(".", $c['themeZipFile'])[0]);
+    $out .= "<h2>特製テーマをインストール</h2>";
+
+    // GitHub Releases の releases/latest/download/... のようにリダイレクトを
+    // 経由する URL でも正しく判定できるよう、最終的なステータスコードで確認する。
+    if ((string) call_user_func($httpStatus, $c['themeDownloadUrl'] . $c['themeZipFile']) != "200") {
+      $errors[] = "特製テーマ「" . $themeName[0] . "」のダウンロード先の情報が間違っています。";
+      $out .= "<ul><li><del>" . $themeName[0] . "</del></li></ul>";
+    } else {
+      $out .= "<ul><li>" . $themeName[0] . "</li></ul>";
     }
   }
 
+  if (isset($c['pluginsZipFile'])) {
+    $out .= "<h2>Plugins Install</h2><ul>";
+    foreach (explode("|", $c['pluginsZipFile']) as $pluginsZip) {
+      $pluginsName = explode("_", explode(".", $pluginsZip)[0]);
+      if ((string) call_user_func($httpStatus, $c['pluginsDownloadUrl'] . $pluginsZip) != "200") {
+        $errors[] = "拡張アプリ「" . $pluginsName[0] . "」のダウンロード先の情報が間違っています。";
+        $out .= "<li><del>" . $pluginsName[0] . "</del></li>";
+      } else {
+        $out .= "<li>" . $pluginsName[0] . "</li>";
+      }
+    }
+    $out .= "</ul>";
+  }
+
+  if (empty($errors)) {
+    $out .= acms_mamp_rewrite_warning($c['cfgFilePath'], $c['mampHttpdConf']);
+    $out .= "\n<form action=\"" . $c['phpName'] . "\" method=\"POST\" onSubmit=\"return double()\">\n<input type=\"submit\" name=\"action\" value=\"セットアップ開始\">\n</form>\n";
+  } else {
+    $out .= "<h2>Error</h2>";
+    foreach ($errors as $msg) {
+      $out .= sprintf("<p class='error'>%s</p>", $msg);
+    }
+  }
+  return $out;
+}
+
+/**
+ * MAMP の httpd.conf で rewrite_module が無効な場合の警告 HTML を返す。
+ *
+ * @return string 警告が不要なら空文字
+ */
+function acms_mamp_rewrite_warning($cfgFilePath, $httpdConf)
+{
+  if (strpos($cfgFilePath, 'MAMP') === false || !is_file($httpdConf)) {
+    return '';
+  }
+  foreach (file($httpdConf) as $line) {
+    if (strpos($line, 'rewrite_module') !== false && preg_match('/^\s*#/', $line)) {
+      return "<h2>MAMP httpd.confチェック</h2><p>rewrite_module の行がコメントアウトされており、このままでは a-blog cms が動作しません。<br>httpd.conf を修正し、バックアップとして httpd.conf.backup を生成します。";
+    }
+  }
+  return '';
+}
+
+function acms_render_setup_done($phpName, $mampMsg)
+{
+  return "\n  <h2>セットアップ完了</h2>\n\n  <p>a-blog cms のインストール準備が完了しました。</p>\n  <p>この " . $phpName . "ファイルについては削除済みです。</p>\n\n  " . $mampMsg . "\n\n  <form action=\"index.php\" method=\"POST\">\n  <input type=\"submit\" name=\"action\" value=\"インストーラーへ移動\">\n  </form>\n\n";
+}
+
+// --------------------------------------------------
+// セットアップ処理（カレントディレクトリ = 設置ディレクトリ前提）
+// --------------------------------------------------
+
+/**
+ * ダウンロード → 解凍 → 配置 → .htaccess 設定 → 特製テーマ・拡張アプリ導入 を実行する。
+ *
+ * @param array  $c
+ * @param array  $acmsPackage      fetch_acms_package_info() の戻り値（root_dir を使う）
+ * @param string $download         パッケージ URL
+ * @param string $zipFile          ダウンロード先 zip のパス
+ * @param string $cpiCheck
+ * @param string $cpiHtaccessPhp   CPI 用 AddHandler に使う PHP バージョン（例 "81"）
+ * @return string 出力する HTML（失敗時はエラーメッセージ）
+ */
+function acms_setup_run(array $c, array $acmsPackage, $download, $zipFile, $cpiCheck, $cpiHtaccessPhp)
+{
+  $installPath = $c['installPath'];
+
+  // 解凍後の a-blog cms のディレクトリ（update.json の root_dir をそのまま利用する。
+  // "acms{version}/ablogcms" のハードコード組み立てをやめ、パッケージ構成の変化に追従する）
+  $ablogcmsDir = $installPath . "/" . $acmsPackage['root_dir'] . "/";
+
+  // root_dir の先頭セグメント（例 "acms3.2.26"）＝解凍後にできる一時ディレクトリ名。
+  $rootDirParts = explode("/", $acmsPackage['root_dir']);
+  $zipAfterDirName = $rootDirParts[0];
+
+  $db = acms_resolve_db_defaults($c);
+
+  // 失敗時は zip を残さない。残っていると次回アクセス時に「前回の zip あり」と
+  // 判定され、再実行が無言でブロックされるため。
+  if (!acms_download_file($download, $zipFile)) {
+    @unlink($zipFile);
+    return 'a-blog cms download Error ! : ' . $download;
+  }
+
+  if (!acms_extract_zip($zipFile, $installPath)) {
+    unlink($zipFile);
+    return 'a-blog cms unZip Error ! : ' . $zipFile;
+  }
+
+  if (!acms_move_package_files($ablogcmsDir, $installPath)) {
+    unlink($zipFile);
+    return 'a-blog cms move Error ! :' . $ablogcmsDir;
+  }
+
+  acms_setup_htaccess($installPath, $cpiCheck, $cpiHtaccessPhp);
+
+  rename($installPath . "/editorconfig.txt", $installPath . '/.editorconfig');
+  rename($installPath . "/env.txt", $installPath . '/.env');
+  rename($installPath . "/gitignore.txt", $installPath . '/.gitignore');
+
+  // root 以外に同梱される htaccess.txt を .htaccess へ一括リネームする。
+  // archives/media/storage/private/cache/themes/archives_rev のようにディレクトリを
+  // ハードコード列挙すると cron や extension（3.2 系で追加された同梱物）が漏れるため、
+  // 実際に展開されたファイルを走査する方式にして、将来の増減にも自動追従させる。
+  // $zipAfterDirName は解凍後の一時ディレクトリ（後で削除される）なので対象外にする。
+  rename_bundled_htaccess($installPath, array($zipAfterDirName));
+
+  acms_write_db_default($installPath, $db);
+
+  unlink($zipFile);
+  unlink($c['phpName']);
+
+  // index.html があった時にリネームしておく
+  if (is_file("./index.html")) {
+    rename("./index.html", "_index.html");
+  }
+
+  // プログラム以外のディレクトリを削除
+  dir_shori("delete", $zipAfterDirName);
+
+  $mampMsg = acms_fix_mamp_httpdconf($c['mampHttpdConf'], $c['mampHttpdConf'] . '.backup');
+
+  if (isset($c['themeZipFile'])) {
+    $error = acms_install_theme($installPath, $c['themeDownloadUrl'], $c['themeZipFile']);
+    if ($error !== null) {
+      return $error;
+    }
+  }
+
+  if (isset($c['pluginsZipFile'])) {
+    $error = acms_install_plugins($installPath, $c['pluginsDownloadUrl'], $c['pluginsZipFile']);
+    if ($error !== null) {
+      return $error;
+    }
+  }
+
+  return acms_render_setup_done($c['phpName'], $mampMsg);
+}
+
+/**
+ * URL からファイルをダウンロードして保存する。
+ *
+ * @return bool 成功したら true
+ */
+function acms_download_file($url, $dest)
+{
+  $fp = @fopen($url, "rb");
+  if ($fp === false) {
+    return false;
+  }
+  $output = @fopen($dest, "wb");
+  if ($output === false) {
+    fclose($fp);
+    return false;
+  }
+  while (!feof($fp)) {
+    $buffer = fread($fp, 4096);
+    if ($buffer !== false) {
+      fwrite($output, $buffer);
+    }
+  }
   fclose($fp);
   fclose($output);
-} else {
-  echo 'a-blog cms download Error ! : ' . $download;
-  exit;
+  return true;
 }
 
-// --------------------------
-// a-blog cms ファイルを解凍
-// --------------------------
-
-$zip = new ZipArchive();
-$res = $zip->open($zipFile);
-
-if ($res === true) {
-  $zip->extractTo($installPath);
+/**
+ * zip を $destDir へ展開する。
+ *
+ * @return bool 成功したら true
+ */
+function acms_extract_zip($zipFile, $destDir)
+{
+  $zip = new ZipArchive();
+  if ($zip->open($zipFile) !== true) {
+    return false;
+  }
+  $zip->extractTo($destDir);
   $zip->close();
-} else {
-  echo 'a-blog cms unZip Error ! : ' . $zipFile;
-  exit;
+  return true;
 }
 
-// --------------------------
-// a-blog cms ディレクトリを移動
-// --------------------------
-
-if ($handle = opendir($ablogcmsDir)) {
-  while (false !== ($entry = readdir($handle))) {
+/**
+ * 展開した a-blog cms の中身を設置ディレクトリ直下へ移動する。
+ *
+ * @return bool ディレクトリを開けなければ false
+ */
+function acms_move_package_files($ablogcmsDir, $installPath)
+{
+  $handle = @opendir($ablogcmsDir);
+  if ($handle === false) {
+    return false;
+  }
+  while (($entry = readdir($handle)) !== false) {
     if ($entry != "." && $entry != "..") {
       rename($ablogcmsDir . $entry, $installPath . "/" . $entry);
     }
   }
   closedir($handle);
-} else {
-  echo 'a-blog cms move Error ! :' . $ablogcmsDir;
-  exit;
+  return true;
 }
 
-// --------------------------
-// .htaccess の設定
-// --------------------------
+/**
+ * .htaccess を設定する。既存の .htaccess があれば同梱の htaccess.txt を追記してマージし、
+ * 無ければリネームする。CPI 環境では PHP のバージョン指定を先頭に付ける。
+ *
+ * @param string $installPath
+ * @param string $cpiCheck
+ * @param string $cpiHtaccessPhp 例 "81"
+ */
+function acms_setup_htaccess($installPath, $cpiCheck, $cpiHtaccessPhp)
+{
+  $htaccessFile = $installPath . "/.htaccess";
 
-$moto_htaccessFile = ".htaccess";
+  if (is_file($htaccessFile)) {
+    $merged = file_get_contents($htaccessFile) . "\n\n" . file_get_contents($installPath . "/htaccess.txt");
+    file_put_contents($htaccessFile, $merged);
+    return;
+  }
 
-if (is_file($moto_htaccessFile)) {
+  rename($installPath . "/htaccess.txt", $htaccessFile);
 
-  $htaccessData = file_get_contents($moto_htaccessFile);
-  $cms_htaccessData = file_get_contents("htaccess.txt");
-
-  $file = fopen("./.htaccess", "w+");
-  fwrite($file, $htaccessData);
-  fwrite($file, "\n\n" . $cms_htaccessData);
-  fclose($file);
-
-} else {
-
-  rename($installPath . "/htaccess.txt", $installPath . '/.htaccess');
-
-  if ($cpi_check == "secure") {
-
-    $htaccess = file_get_contents($installPath."/.htaccess");
-    $cpi_htaccess = sprintf("<Files ~ \"\.ini\">
+  if ($cpiCheck == "secure") {
+    $cpiHtaccess = sprintf("<Files ~ \"\.ini\">
 deny from all
 </Files>
 Options +SymLinksIfOwnerMatch
-AddHandler x-httpd-php%s .php\n\n",$cpi_htaccess_php);
-
-  $fp = fopen($installPath."/.htaccess",'w');
-  fwrite($fp,$cpi_htaccess.$htaccess);
-  fclose($fp);
+AddHandler x-httpd-php%s .php\n\n", $cpiHtaccessPhp);
+    file_put_contents($htaccessFile, $cpiHtaccess . file_get_contents($htaccessFile));
   }
 }
 
-rename($installPath . "/editorconfig.txt", $installPath . '/.editorconfig');
-rename($installPath . "/env.txt", $installPath . '/.env');
-rename($installPath . "/gitignore.txt", $installPath . '/.gitignore');
-
-// root 以外に同梱される htaccess.txt を .htaccess へ一括リネームする。
-// archives/media/storage/private/cache/themes/archives_rev のようにディレクトリを
-// ハードコード列挙すると cron や extension（3.2 系で追加された同梱物）が漏れるため、
-// 実際に展開されたファイルを走査する方式に変更し、将来の増減にも自動追従させる。
-// $zipAfterDirName は解凍後の一時ディレクトリ（後で削除される）なので対象外にする。
-rename_bundled_htaccess($installPath, array($zipAfterDirName));
-
-// --------------------------
-// DB 初期設定
-// --------------------------
-
-$data = sprintf("<?php
+/**
+ * インストーラー（setup/）が使う DB 初期値ファイルを書き出す。
+ *
+ * @param string $installPath
+ * @param array  $db acms_resolve_db_defaults() の戻り値
+ */
+function acms_write_db_default($installPath, array $db)
+{
+  $data = sprintf("<?php
 \$dbDefaultHost     = '%s';
 \$dbDefaultName     = '%s';
 \$dbDefaultCreate   = '%s'; // '' or 'checked'
 \$dbDefaultUser     = '%s';
 \$dbDefaultPass     = '%s';
-\$dbDefaultPrefix   = 'acms_';", $dbHost, $dbName, $dbCreate, $dbUser, $dbPass);
-$db_default = $installPath . "/setup/lib/db_default.php";
-file_put_contents($db_default, $data);
+\$dbDefaultPrefix   = 'acms_';", $db['dbHost'], $db['dbName'], $db['dbCreate'], $db['dbUser'], $db['dbPass']);
+  file_put_contents($installPath . "/setup/lib/db_default.php", $data);
 
-if (is_file($installPath."/db_default.php")) {
-  rename("./db_default.php", "./setup/lib/db_default.php");
+  if (is_file($installPath . "/db_default.php")) {
+    rename($installPath . "/db_default.php", $installPath . "/setup/lib/db_default.php");
+  }
 }
 
-// --------------------------
-// ファイルの削除
-// --------------------------
+/**
+ * MAMP の httpd.conf で無効化されている rewrite_module を有効化する（バックアップ付き）。
+ *
+ * @return string 画面に出すメッセージ（修正しなかった場合は空文字）
+ */
+function acms_fix_mamp_httpdconf($httpdConf, $backup)
+{
+  if (!is_file($httpdConf)) {
+    return "";
+  }
 
-unlink($zipFile);
-unlink($phpName);
-
-# index.html があった時にリネームしておく
-if (is_file("./index.html")) {
-  rename("./index.html", "_index.html");
-}
-
-# プログラム以外のディレクトリを削除
-dir_shori("delete", $zipAfterDirName);
-
-
-// --------------------------
-// MAMP暫定対応
-// --------------------------
-$mamp_httpdconf = '/Applications/MAMP/conf/apache/httpd.conf';
-$mamp_msg = "";
-
-if (is_file($mamp_httpdconf)) {
-
-  $update_httpdconf = false;
-  $mamp_httpdconf_backup = '/Applications/MAMP/conf/apache/httpd.conf.backup';
-
-  $fileContents = file($mamp_httpdconf);
-
-  foreach ($fileContents as $key => $line) {
+  $lines = file($httpdConf);
+  $updated = false;
+  foreach ($lines as $key => $line) {
     if (strpos($line, 'rewrite_module') !== false) {
-        if (preg_match('/^\s*#/', $line)) {
-            $fileContents[$key] = preg_replace('/^\s*#/', '', $line);
-            $update_httpdconf = true;
-        }
-        break;
+      if (preg_match('/^\s*#/', $line)) {
+        $lines[$key] = preg_replace('/^\s*#/', '', $line);
+        $updated = true;
+      }
+      break;
     }
   }
 
-  if ($update_httpdconf == true) {
-    copy($mamp_httpdconf, $mamp_httpdconf_backup);
-    file_put_contents($mamp_httpdconf, implode('', $fileContents));
-    $mamp_msg = "<p>httpd.conf を修正し、バックアップとして httpd.conf.backup を生成しました。<br><strong>MAMPを再起動してください。</strong></p>";
+  if (!$updated) {
+    return "";
   }
+  copy($httpdConf, $backup);
+  file_put_contents($httpdConf, implode('', $lines));
+  return "<p>httpd.conf を修正し、バックアップとして httpd.conf.backup を生成しました。<br><strong>MAMPを再起動してください。</strong></p>";
 }
 
-// --------------------------
-// 特製テーマファイルをダウンロード
-// --------------------------
+/**
+ * 特製テーマの zip をダウンロードして配置する。
+ *
+ * @return string|null 失敗時はエラーメッセージ
+ */
+function acms_install_theme($installPath, $downloadUrl, $themeZipFile)
+{
+  $themeNameVersion = explode(".", $themeZipFile);
+  $themeNameArray = explode("_", $themeNameVersion[0]);
+  $themeName = $themeNameArray[0];
+  $themeZipUrl = $downloadUrl . $themeZipFile;
+  $themePath = $installPath . "/" . $themeName;
 
-if (isset($theme_zip_file)) {
-
-  $theme_name_version = explode(".",$theme_zip_file);
-  $theme_name_array = explode("_",$theme_name_version[0]);
-  $theme_name = $theme_name_array[0];
-  $theme_zip_url = $theme_download_url . $theme_zip_file;
-  $theme_path = $installPath."/".$theme_name;
-
-  $fp = fopen($theme_zip_url, "r");
-  if ($fp !== FALSE) {
-    file_put_contents($theme_zip_file, "");
-    while (!feof($fp)) {
-      $buffer = fread($fp, 4096);
-      if ($buffer !== FALSE) {
-        file_put_contents($theme_zip_file, $buffer, FILE_APPEND);
-      }
-    }
-    fclose($fp);
-  } else {
-    echo 'theme ' . $theme_name . ' download Error ! : ' . $theme_zip_url;
-    exit;
+  if (!acms_download_file($themeZipUrl, $themeZipFile)) {
+    return 'theme ' . $themeName . ' download Error ! : ' . $themeZipUrl;
   }
 
+  // テーマ zip には配布形式が2種類ある。
+  //  - 従来形式（例: a-blogcms.jp 配布の square@ec.zip）: テーマ名ディレクトリが
+  //    最外層で、その中に bin/ themes/ 等が入っている（<name>/bin/, <name>/themes/）。
+  //  - bin/themes 直下形式（例: acms-develop, acms-utsuwa の GitHub Releases 配布物）:
+  //    bin/ themes/ が最外層で、その中にテーマ名ディレクトリが入っている
+  //    （bin/<name>/, themes/<name>/）。a-blog cms 本体の setup/bin・themes 構造を
+  //    そのまま zip 化したもの。
+  // 展開前にルート直下の "bin/" エントリの有無で形式を判定する。
   $zip = new ZipArchive();
-  $res = $zip->open($theme_zip_file);
-
-  if ($res === true) {
-    // テーマ zip には配布形式が2種類ある。
-    //  - 従来形式（例: a-blogcms.jp 配布の square@ec.zip）: テーマ名ディレクトリが
-    //    最外層で、その中に bin/ themes/ 等が入っている（<name>/bin/, <name>/themes/）。
-    //  - bin/themes 直下形式（例: acms-develop, acms-utsuwa の GitHub Releases 配布物）:
-    //    bin/ themes/ が最外層で、その中にテーマ名ディレクトリが入っている
-    //    （bin/<name>/, themes/<name>/）。a-blog cms 本体の setup/bin・themes 構造を
-    //    そのまま zip 化したもの。
-    // 展開前にルート直下の "bin/" エントリの有無で形式を判定する。
-    $themeZipHasTopLevelBin = false;
-    for ($i = 0; $i < $zip->numFiles; $i++) {
-      if (preg_match('#^bin/#', $zip->getNameIndex($i))) {
-        $themeZipHasTopLevelBin = true;
-        break;
-      }
-    }
-    $zip->extractTo($installPath);
-    $zip->close();
-  } else {
-    echo 'theme unZip Error ! : ' . $theme_zip_url;
-    exit;
+  if ($zip->open($themeZipFile) !== true) {
+    return 'theme unZip Error ! : ' . $themeZipUrl;
   }
+  $hasTopLevelBin = false;
+  for ($i = 0; $i < $zip->numFiles; $i++) {
+    if (preg_match('#^bin/#', $zip->getNameIndex($i))) {
+      $hasTopLevelBin = true;
+      break;
+    }
+  }
+  $zip->extractTo($installPath);
+  $zip->close();
 
-  if ($themeZipHasTopLevelBin) {
-
+  if ($hasTopLevelBin) {
     // bin/themes 直下形式: 展開直後に installPath/bin/<name>/ ができるので、
     // これを setup/bin/ へ移動する。themes/<name>/ は展開時点で既に
     // installPath/themes/<name>/ に配置済みのため追加の move は不要。
     // plugins/ が同梱される場合はルート直下（installPath/plugins/）に来る。
     dir_shori("move", $installPath . "/bin/", $installPath . "/setup/bin/");
-    $check_plugins = $installPath . "/plugins";
-
+    $checkPlugins = $installPath . "/plugins";
   } else {
-
-    dir_shori("move", $theme_path . "/bin/" , $installPath . "/setup/bin/" );
-    dir_shori("move", $theme_path . "/themes/" , $installPath . "/themes/" );
+    dir_shori("move", $themePath . "/bin/", $installPath . "/setup/bin/");
+    dir_shori("move", $themePath . "/themes/", $installPath . "/themes/");
 
     // テーマ選択の仕組みは a-blog cms のバージョンで異なる。
     //  - 旧インストーラ (~3.2.26 以前): setup/tpl/install.html を持ち、テーマ同梱の install.html で
@@ -506,217 +690,80 @@ if (isset($theme_zip_file)) {
     //    FS 走査で決まり、サムネイルも bin/<name>/ 内から解決する。bin の move だけで足りる。
     // setup/tpl の有無で新旧を判定し、旧系のときだけ install.html / サムネイルを配置する
     // （新系で存在しない setup/tpl へ rename すると警告になるため）。
-    if (is_dir($installPath . "/setup/tpl") && is_file($theme_path . "/tpl/install.html")) {
-      rename( $theme_path . "/tpl/install.html", $installPath . "/setup/tpl/install.html");
-      if (is_file($theme_path . "/img/" . $theme_name . ".jpg")) {
-        rename( $theme_path . "/img/" . $theme_name . ".jpg", $installPath . "/setup/img/" . $theme_name . ".jpg");
+    if (is_dir($installPath . "/setup/tpl") && is_file($themePath . "/tpl/install.html")) {
+      rename($themePath . "/tpl/install.html", $installPath . "/setup/tpl/install.html");
+      if (is_file($themePath . "/img/" . $themeName . ".jpg")) {
+        rename($themePath . "/img/" . $themeName . ".jpg", $installPath . "/setup/img/" . $themeName . ".jpg");
       }
     }
-
-    $check_plugins = $theme_path."/plugins";
+    $checkPlugins = $themePath . "/plugins";
   }
 
   // 拡張アプリ(plugins/)の同梱はテーマ zip の配布形式に関わらず起こりうるため、
-  // 形式ごとに解決した $check_plugins のパスを使って共通処理する。
-  if (is_dir($check_plugins)) {
-      if ($handle = opendir($check_plugins)) {
-        while (($file = readdir($handle)) !== false) {
-          if ($file != "." && $file != "..") {
-            if (is_dir($check_plugins."/".$file)) {
-              dir_shori("move", $check_plugins."/".$file, $installPath."/extension/plugins/".$file);
-            }
-          }
-        }
-        closedir($handle);
-      }
-
-      // 拡張アプリをインストール時 自動で HOOK_ENABLE を 1 にする
-      $configFile = $installPath."/config.server.php";
-      $config = file_get_contents($configFile);
-      $rows = explode("\n", $config);
-      $fp = fopen($configFile, "w");
-      if( $fp !== false ) {
-        foreach( $rows as $row ) {
-          if ( preg_match( '/HOOK_ENABLE/', $row ) ) {
-              $outdata = "define('HOOK_ENABLE', 1);\n";
-          } else {
-              $outdata = $row . "\n";
-          }
-          fwrite($fp, $outdata);
-        }
-      } else {
-        echo "config.server.php fopen error";
-      }
-      fclose($fp);
-
+  // 形式ごとに解決した $checkPlugins のパスを使って共通処理する。
+  if (is_dir($checkPlugins)) {
+    acms_move_bundled_plugins($checkPlugins, $installPath);
+    acms_enable_hook($installPath . "/config.server.php");
   }
 
-  if (!$themeZipHasTopLevelBin) {
-    dir_shori("delete", $theme_name);
+  if (!$hasTopLevelBin) {
+    dir_shori("delete", $themeName);
   }
-  unlink($theme_zip_file);
+  unlink($themeZipFile);
+  return null;
 }
 
-// --------------------------
-// 拡張アプリをダウンロード
-// --------------------------
-
-if (isset($plugins_zip_file)) {
-
-  $plugins_array = explode("|",$plugins_zip_file);
-
-  foreach($plugins_array as $plugins_zip) {
-
-    $plugins_name_version = explode(".",$plugins_zip);
-    $plugins_name_array = explode("_",$plugins_name_version[0]);
-    $plugins_name = $plugins_name_array[0];
-    $plugins_zip_url = $plugins_download_url . $plugins_zip;
-
-    $fp = fopen($plugins_zip_url, "r");
-    if ($fp !== FALSE) {
-      file_put_contents($plugins_zip, "");
-      while (!feof($fp)) {
-        $buffer = fread($fp, 4096);
-        if ($buffer !== FALSE) {
-          file_put_contents($plugins_zip, $buffer, FILE_APPEND);
-        }
-      }
-      fclose($fp);
-    } else {
-      echo 'plugin download Error ! : ' . $plugins_zip_url;
-      exit;
-    }
-
-    $zip = new ZipArchive();
-    $res = $zip->open($plugins_zip);
-
-    if ($res === true) {
-      $zip->extractTo($installPath);
-      $zip->close();
-    } else {
-      echo 'theme unZip Error ! : ' . $plugins_zip;
-      exit;
-    }
-
-    dir_shori("move", $installPath ."/". $plugins_name, $installPath."/extension/plugins/" . $plugins_name);
-    unlink($plugins_zip);
-  }
-
-}
-
-// --------------------------
-// インストーラーに飛ぶ
-// --------------------------
-
-?>
-
-  <h2>セットアップ完了</h2>
-
-  <p>a-blog cms のインストール準備が完了しました。</p>
-  <p>この <?php echo $phpName; ?>ファイルについては削除済みです。</p>
-
-  <?php echo $mamp_msg; ?>
-
-  <form action="index.php" method="POST">
-  <input type="submit" name="action" value="インストーラーへ移動">
-  </form>
-
-<?php
-
-} else {
-
-  ?>
-
-  <p>a-blog cms のパッケージのダウンロードとファイルのリネーム作業を行います。</p>
-
-  <h2>PHP バージョンチェック</h2>
-
-  <ul><li>Ver. <?php
-  if ($cpi_php_version && $cpi_check == "secure") {
-    echo "<del>";
-  }
-
-  echo phpversion();
-
-  if ($cpi_php_version && $cpi_check == "secure") {
-    echo "</del> → ". $version . "(変更)";
-  }
-  ?></li></ul>
-
-<?php
-
-if (isset($theme_zip_file)) {
-
-  $theme_name_version = explode(".",$theme_zip_file);
-  $theme_name = explode("_",$theme_name_version[0]);
-  echo "<h2>特製テーマをインストール</h2>";
-
-  // GitHub Releases の releases/latest/download/... のようにリダイレクトを
-  // 経由する URL でも正しく判定できるよう、最終的なステータスコードで確認する。
-  $check = $theme_download_url.$theme_zip_file;
-  if ( fetch_final_http_status($check) != "200" ) {
-    $error_msg[] = "特製テーマ「".$theme_name[0]."」のダウンロード先の情報が間違っています。";
-    echo "<ul><li><del>".$theme_name[0]."</del></li></ul>";
-  } else {
-    echo "<ul><li>".$theme_name[0]."</li></ul>";
-  }
-}
-
-  if (isset($plugins_zip_file)) {
-
-$plugins_array = explode("|",$plugins_zip_file);
-echo "<h2>Plugins Install</h2>";
-echo "<ul>";
-
-foreach($plugins_array as $plugins_zip) {
-
-  $plugins_name_version = explode(".",$plugins_zip);
-  $plugins_name = explode("_",$plugins_name_version[0]);
-
-  // テーマ同様、リダイレクトを経由する URL でも正しく判定できるよう、
-  // 最終的なステータスコードで確認する。
-  $check = $plugins_download_url.$plugins_zip;
-  if ( fetch_final_http_status($check) != "200" ) {
-    $error_msg[] = "拡張アプリ「".$plugins_name[0]."」のダウンロード先の情報が間違っています。";
-    echo "<li><del>".$plugins_name[0]."</del></li>";
-  } else {
-    echo "<li>".$plugins_name[0]."</li>";
-  }
-}
-echo "</ul>";
-}
-
-  if (empty($error_msg)){
-
-
-    if ($mamp_rewrite_module_off) {
-      echo $mamp_rewrite_module_off;
-    }
-
-
-    ?>
-
-<form action="<?php echo $phpName; ?>" method="POST" onSubmit="return double()">
-<input type="submit" name="action" value="セットアップ開始">
-</form>
-
-    <?php
-  } else {
-    echo "<h2>Error</h2>";
-    foreach($error_msg as $msg) {
-      echo sprintf("<p class='error'>%s</p>",$msg);
+/**
+ * 同梱の拡張アプリを extension/plugins/ へ移動する。
+ */
+function acms_move_bundled_plugins($pluginsDir, $installPath)
+{
+  $handle = opendir($pluginsDir);
+  while (($file = readdir($handle)) !== false) {
+    if ($file != "." && $file != ".." && is_dir($pluginsDir . "/" . $file)) {
+      dir_shori("move", $pluginsDir . "/" . $file, $installPath . "/extension/plugins/" . $file);
     }
   }
-
-
-
+  closedir($handle);
 }
 
-exit;
-?>
-</body>
-</html>
-<?php
+/**
+ * config.server.php の HOOK_ENABLE を 1 にする（拡張アプリをインストール時に自動で有効化）。
+ */
+function acms_enable_hook($configFile)
+{
+  $rows = explode("\n", file_get_contents($configFile));
+  $out = '';
+  foreach ($rows as $row) {
+    $out .= preg_match('/HOOK_ENABLE/', $row) ? "define('HOOK_ENABLE', 1);\n" : $row . "\n";
+  }
+  file_put_contents($configFile, $out);
+}
+
+/**
+ * 拡張アプリ（"a.zip|b.zip" 形式で複数指定可）をダウンロードして配置する。
+ *
+ * @return string|null 失敗時はエラーメッセージ
+ */
+function acms_install_plugins($installPath, $downloadUrl, $pluginsZipFile)
+{
+  foreach (explode("|", $pluginsZipFile) as $pluginsZip) {
+    $pluginsName = explode("_", explode(".", $pluginsZip)[0])[0];
+    $pluginsZipUrl = $downloadUrl . $pluginsZip;
+
+    if (!acms_download_file($pluginsZipUrl, $pluginsZip)) {
+      return 'plugin download Error ! : ' . $pluginsZipUrl;
+    }
+    if (!acms_extract_zip($pluginsZip, $installPath)) {
+      return 'theme unZip Error ! : ' . $pluginsZip;
+    }
+
+    dir_shori("move", $installPath . "/" . $pluginsName, $installPath . "/extension/plugins/" . $pluginsName);
+    unlink($pluginsZip);
+  }
+  return null;
+}
+
 // --------------------------
 // ディレクトリを操作 function ( move / copy / delete )
 // --------------------------
@@ -845,6 +892,37 @@ function fetch_final_http_status($url)
 }
 
 /**
+ * a-blog cms 3.x の「バージョン別 対応 PHP レンジ」を返す。
+ *
+ * 対応 PHP の管理はこの表に一本化している（update.json の php_*_version は使わない）。
+ * update.json は系列の最新パッチ 1 件分の範囲しか持たず、過去パッチ指定
+ * （例: PHP 7.2 で 3.1.0）を正しく判定できないため。
+ * PHP 対応を変更するときはこの表だけを更新すること（requirements.html と揃える）。
+ *
+ * @param string $version a-blog cms のバージョン（例 "3.1.6"）
+ * @return array{0: string, 1: string}|null [PHP 下限, PHP 上限] 。表に無いバージョンは null
+ */
+function acms_known_php_range($version)
+{
+  // [CMS 下限, CMS 上限(null=無制限), PHP 下限, PHP 上限]  ※上から順に最初に一致した行を採用
+  $table = array(
+    array('3.0.0',  '3.0.11', '7.2.5', '8.0.999'),
+    array('3.0.12', '3.0.999', '7.2.5', '8.1.999'),
+    array('3.1.0',  '3.1.6',  '7.2.5', '8.1.999'),
+    array('3.1.7',  '3.1.13', '7.3.0', '8.1.999'),
+    array('3.1.14', '3.1.999', '7.3.0', '8.3.999'),
+    array('3.2.0',  '3.2.999', '8.1.0', '8.5.999'),
+  );
+
+  foreach ($table as $row) {
+    if (version_compare($version, $row[0], '>=') && version_compare($version, $row[1], '<=')) {
+      return array($row[2], $row[3]);
+    }
+  }
+  return null;
+}
+
+/**
  * update.json (https://www.a-blogcms.jp/api/update.json) から
  * 対象バージョンとダウンロードパッケージ情報を取得する。
  *
@@ -857,11 +935,12 @@ function fetch_final_http_status($url)
  *                                   （実サーバー上に同名のフルパッケージが存在することを確認済み）。
  * @param string $phpVersionForCheck PHP バージョン適合チェックに使う値
  *                                   （CPI 環境では $cpi_php_version 側の値を渡す）
+ * @param string $apiUrl             update.json の URL（テストで差し替える）
  *
  * @return array{version: string, download: string|null, root_dir: string|null}|false
  *   失敗時は false。成功時は 'download'/'root_dir' に対応パッケージが無い場合 null が入る。
  */
-function fetch_acms_package_info($wantVersion, $forInstall, $phpVersionForCheck)
+function fetch_acms_package_info($wantVersion, $forInstall, $phpVersionForCheck, $apiUrl = 'https://www.a-blogcms.jp/api/update.json')
 {
   // "8.1" のような major.minor のみの表記は、桁数の異なる "8.1.0" との
   // version_compare で意図せず「未満」と判定されてしまう（PHP の既知の挙動）ため、
@@ -876,7 +955,7 @@ function fetch_acms_package_info($wantVersion, $forInstall, $phpVersionForCheck)
   $options['ssl']['verify_peer'] = false;
   $options['ssl']['verify_peer_name'] = false;
 
-  $json = @file_get_contents('https://www.a-blogcms.jp/api/update.json', false, stream_context_create($options));
+  $json = @file_get_contents($apiUrl, false, stream_context_create($options));
   if ($json === false) {
     return false;
   }
@@ -944,16 +1023,25 @@ function fetch_acms_package_info($wantVersion, $forInstall, $phpVersionForCheck)
     return $result;
   }
 
+  // 対応 PHP は update.php 内の表を優先し、表に無い系列だけ update.json の範囲を使う
+  $knownRange = acms_known_php_range($result['version']);
+
   foreach ($target['packages'] as $pkg) {
     if (!isset($pkg['php_min_version'], $pkg['php_max_version'], $pkg['download'], $pkg['root_dir'])) {
       continue;
     }
 
-    // "8.4.x" のような表記を上限比較できる値に正規化する
-    $max = preg_replace('/\.x$/', '.999', $pkg['php_max_version']);
+    if ($knownRange !== null) {
+      $min = $knownRange[0];
+      $max = $knownRange[1];
+    } else {
+      $min = $pkg['php_min_version'];
+      // "8.4.x" のような表記を上限比較できる値に正規化する
+      $max = preg_replace('/\.x$/', '.999', $pkg['php_max_version']);
+    }
 
     if (
-      version_compare($phpVersionForCheck, $pkg['php_min_version'], '>=') &&
+      version_compare($phpVersionForCheck, $min, '>=') &&
       version_compare($phpVersionForCheck, $max, '<=')
     ) {
       $download = $pkg['download'];
