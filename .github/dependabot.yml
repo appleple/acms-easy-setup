@@ -1,0 +1,19 @@
+version: 2
+updates:
+  # GitHub Actions（actions/checkout など）を最新に保つ
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        patterns: ['*']
+
+  # ビルド用の npm 依存（archiver など）
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      npm:
+        patterns: ['*']
