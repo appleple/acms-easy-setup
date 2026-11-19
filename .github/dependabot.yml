@@ -1,10 +1,20 @@
 version: 2
 updates:
-  # GitHub Actions（actions/checkout など）を最新に保つ
+  # GitHub Actions（actions/checkout など）
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: daily
+    # 公開直後のリリースは 3 日置いてから適用する（セキュリティ更新は対象外）。
+    # 指定しなくても既定で 3 日だが、意図が分かるよう明示している。
+    cooldown:
+      default-days: 3
+    commit-message:
+      prefix: ci
+      include: scope
+    labels:
+      - dependencies
+      - github-actions
     groups:
       github-actions:
         patterns: ['*']
@@ -14,6 +24,14 @@ updates:
     directory: /
     schedule:
       interval: daily
+    cooldown:
+      default-days: 3
+    commit-message:
+      prefix: build
+      include: scope
+    labels:
+      - dependencies
+      - npm
     groups:
       npm:
         patterns: ['*']
